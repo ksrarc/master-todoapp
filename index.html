@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<title>Todo Apps</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link href="https://unpkg.com/sanitize.css" rel="stylesheet" />
+	<link href="https://unpkg.com/sanitize.css/forms.css" rel="stylesheet" />
+	<link href="https://unpkg.com/sanitize.css/typography.css" rel="stylesheet" />
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flexboxgrid/6.3.1/flexboxgrid.min.css"
+		type="text/css">
+</head>
+
+<body>
+
+	<div class="row center-xs">
+		<div class="col-lg-1">
+			<p>Aplicaciones</p>
+		</div>
+	</div>
+	<div class="row around-xs">
+		<div class="col-lg-3">
+			<div id="todoapp-1"></div>
+		</div>
+		<div class="col-lg-3">
+			<div id="todoapp-2"></div>
+		</div>
+		<div class="col-lg-3">
+			<div id="todoapp-3"></div>
+		</div>
+		<div class="col-lg-3">
+			<div id="todoapp-4"></div>
+		</div>
+	</div>
+
+	<script src="elm/todoapp-elm.js"></script>
+	<script>
+		var app1 = Elm.TodoApp.init({
+			node: document.getElementById("todoapp-1")
+		});      
+		var app2 = Elm.TodoApp.init({
+			node: document.getElementById("todoapp-2")
+		});      
+		var app3 = Elm.TodoApp.init({
+			node: document.getElementById("todoapp-3")
+		});      
+		var app4 = Elm.TodoApp.init({
+			node: document.getElementById("todoapp-4")
+		});      
+	</script>
+</body>
+
+</html>
