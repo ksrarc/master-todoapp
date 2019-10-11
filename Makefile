@@ -1,10 +1,11 @@
 .DEFAULT_GOAL=all
 S3PATH=caac/static/todoapp
 MC=mc
-CACHECONTROL=--attr Cache-Control=max-age=9000,min-fresh=9000
+CACHECONTROL=--attr Cache-Control=max-age=0
+DEPLOY_FILES=index.html $(wildcard *.js)
 
 deploy: all
-	${MC} cp ${CACHECONTROL} index.html *.js ${S3PATH}/
+	${MC} cp ${CACHECONTROL} ${DEPLOY_FILES} ${S3PATH}/
 
 all: elm
 
