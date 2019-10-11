@@ -16,11 +16,10 @@ type alias Item = { id: Int, text: String, price: Float, quantity: Int, enabled:
 
 type alias CalcModel = { left : Maybe Float, right: Maybe Float, operation: CalcOperation, text: String }
 type alias TodoModel = { todos: List Todo, new: Todo }
+type Tax = TaxValue Float | TaxRate Float | NoTax
 type alias ItemModel = { items: List Item,
                         newItem: Item,
-                        taxRate: Float,
-                        taxValue: Float,
-                        taxByRate: Bool }
+                        tax: Tax }
 type alias Model = {   
                         counter: Int,
                         todoModel : TodoModel,
@@ -34,16 +33,61 @@ emptyItem id = Item id "" 0 0 False
 
 firstTodos = [
         Todo 1 "Hola Mundo" False,
-        Todo 2 "Cesar Arana" False
+        Todo 2 "Cesar Arana" False,
+        Todo 3 "Cesar Arana" False
     ]
-counter0 = (List.foldl max 0 (List.map (\t -> t.id) firstTodos)) + 1
+firstItems = [
+        Item 10 "CPU" 1000 2 True,
+        Item 11 "RAM" 500 4 True
+    ]
+
+counter0 = 100 -- (List.foldl max 0 (List.map (\t -> t.id) firstTodos)) + 1
 
 model0 : Model 
-model0 = Model  (counter0+2)
+model0 = Model  (counter0)
                 (TodoModel firstTodos (emptyTodo counter0))
-                (ItemModel [] (emptyItem (counter0+1)) 0.19 0 True)
+                (ItemModel firstItems (emptyItem (counter0+1)) (TaxRate 0.19) )
                 (CalcModel Nothing Nothing Noop "")
-                TodoTab 
+                InvoiceTab
+-- Utils
+
+changeItemsIn: ItemModel  -> List Item -> ItemModel
+changeItemsIn model list =
+    ItemModel  list model.newItem model.tax
+
+changeTaxIn: ItemModel -> Tax -> ItemModel
+changeTaxIn model tax =
+    ItemModel  model.items model.newItem tax
+
+toTax : String -> Tax
+toTax string =
+    let
+        trimmed = String.trim string
+        cleaned = String.replace "%" "" trimmed
+        value = case String.toFloat cleaned of
+                    Nothing -> 0
+                    Just v -> v
+    in
+        case trimmed of
+            "" -> NoTax
+            _ ->
+                if      String.endsWith "%" trimmed
+                then    TaxRate (value / 100.0)
+                else    TaxValue value
+
+reduceInvoice : ItemModel -> ( Float, Float, Float )
+reduceInvoice itemModel =
+
+    let
+        itemTotal item = (toFloat item.quantity) * item.price
+        itemValues = List.map itemTotal itemModel.items
+        invoiceSubTotal = List.foldr (+) 0 itemValues
+        tax = case itemModel.tax of
+                TaxRate rate -> invoiceSubTotal * rate
+                TaxValue val -> val
+                NoTax -> 0
+
+    in ( invoiceSubTotal , tax, invoiceSubTotal + tax )
 
 -- Updates
 
@@ -55,7 +99,12 @@ type Action =
 
     |   CalculatorClick String
 
+    |   ChangeItemPrice Int String -- mmm, debo hacerlo mejor, mas funcional
+    |   ChangeItemQuantity Int String -- aqui estoy trayendo valoes del gui y deberian se valores ya procesados por composicion
+    |   ChangeInvoiceTaxUI String 
+
     |   ChangeTab Tab
+    |   IgnoreAction
 
 checkTodo : Todo ->Bool -> Todo
 checkTodo todo check  =
@@ -97,10 +146,47 @@ update msg model =
                 { model | todoModel = TodoModel newTodos model.todoModel.new }
         DeleteTodo id -> 
             { model | todoModel = TodoModel (List.filter (\t -> not (t.id == id) ) model.todoModel.todos) model.todoModel.new }
+
+
         CalculatorClick str ->
             { model | calcModel = processCalc str model.calcModel }
+
+        ChangeItemPrice id string -> 
+            let
+                price = case String.toFloat string of 
+                            Nothing -> 0
+                            Just val -> val
+                newItems = List.map 
+                                (\i -> if i.id == id then Item i.id i.text price i.quantity i.enabled else i )
+                                model.itemModel.items
+                newItemModel = changeItemsIn model.itemModel newItems
+            in
+            { model | itemModel = newItemModel }
+
+        ChangeItemQuantity id string -> 
+            
+            let
+                quantity = case String.toInt string of 
+                            Nothing -> 0
+                            Just val -> val
+                newItems = List.map 
+                                (\i -> if i.id == id then Item i.id i.text i.price quantity i.enabled else i )
+                                model.itemModel.items
+                newItemModel = changeItemsIn model.itemModel newItems
+            in
+            { model | itemModel = newItemModel }
+
+        ChangeInvoiceTaxUI str -> 
+
+            let
+                newItemModel = changeTaxIn model.itemModel (toTax str)
+            in
+                { model | itemModel = newItemModel }
+
         ChangeTab tab ->
             { model | tab = tab }
+
+        IgnoreAction -> model
         
 
 -- View
@@ -136,6 +222,8 @@ viewTodoTab model =
             ,
             ul [] (List.map viewTodo model.todos)
         ]
+
+
 
 viewCalcButton :  CalcModel -> String -> Html Action
 viewCalcButton calc str =
@@ -188,9 +276,66 @@ viewCalcTab model =
                     ]
         ]
 
-viewInvoiceTab : Model -> Html Action
+viewItem: Item -> Html Action
+viewItem item =  
+        tr [] [
+            td [] [ text item.text ]
+            , td [] [ input [ value (String.fromFloat item.price), Events.onInput  (ChangeItemPrice item.id)] []  ]
+            , td [] [ input [ value (String.fromInt item.quantity), Events.onInput  (ChangeItemQuantity item.id)] []  ]
+            , td [] [ text (String.fromFloat ((toFloat item.quantity) * item.price))]
+        ]
+
+viewInvoiceTab : ItemModel -> Html Action
 viewInvoiceTab model =
-    div [] []
+
+    let
+        ( subTotal, tax, total ) = reduceInvoice model
+        taxValue =
+            case      model.tax of
+            TaxRate rate ->   (String.fromFloat (rate*100)) ++ " %"
+            TaxValue val ->    String.fromFloat val
+            NoTax -> ""
+
+    in
+
+    table []
+        
+        (
+
+            [   tr [] [
+                    td [] [ text "Item" ]
+                    , td [] [ text "Vlr Uni."]
+                    , td [] [ text "Cant."]
+                    , td [] [ text "Total"]
+                ]
+            ]
+            ++
+            List.map viewItem model.items
+            ++
+            [
+                tr [] [
+                    td [] [  ]
+                    , td [] [ ]
+                    , td [] [ text "Sub Total" ]
+                    , td [] [ text  (String.fromFloat  subTotal ) ]
+                ]
+                ,
+                tr [] [
+                    td [] [  ]
+                    , td [] [ text "Impuesto" ]
+                    , td [] [ input [ value taxValue, Events.onInput ChangeInvoiceTaxUI ] [] ]
+                    , td [] [ text  (String.fromFloat tax) ]
+                ]
+                ,
+                tr [] [
+                    td [] [  ]
+                    , td [] [ ]
+                    , td [] [ text "Total" ]
+                    , td [] [ text  (String.fromFloat  total ) ]
+                ]
+            ]
+        )
+
 
 view : Model -> Html Action
 view model =
@@ -207,7 +352,7 @@ view model =
         case model.tab of
             TodoTab -> viewTodoTab model.todoModel
             CalcTab -> viewCalcTab model.calcModel
-            InvoiceTab -> viewInvoiceTab model
+            InvoiceTab -> viewInvoiceTab model.itemModel
     ]
     
 
