@@ -1,7 +1,7 @@
 module TodoApp exposing (..)
 
 import Browser
-import Html exposing (Html, button, div, text, ul, li, input,span, table, tr, td)
+import Html exposing (Html, button, div, text, ul, li, input,span, table, tr, td, th)
 import Html.Attributes exposing (value,class, attribute, type_, checked, style)
 import Html.Events as Events
 
@@ -182,16 +182,20 @@ type alias Item = { id: Int,
                     quantity: Int, 
                     enabled: Bool }
 type Tax = TaxValue Float | TaxRate Float | NoTax
-type alias InvoiceModel = { items: List Item,
-                        newItem: Item,
-                        tax: Tax }
+type alias InvoiceModel = { counter: Int,
+                            items: List Item,
+                            tax: Tax }
 
 type InvoiceAction =
         ChangeItemPrice Int String -- mmm, debo hacerlo mejor, mas funcional
     |   ChangeItemQuantity Int String -- aqui estoy trayendo valoes del gui y deberian se valores ya procesados por composicion
+    |   ChangeItemText Int String
+    |   CheckItem Int Bool
+    |   DeleteItem Int
     |   ChangeInvoiceTaxUI String 
+    |   AddNewItem
 
-emptyItem id = Item id "" 0 0 False
+emptyItem id = Item id "" 0 0 True
 firstItems = [
         Item 10 "CPU" 1000 2 True,
         Item 11 "RAM" 500 4 True
@@ -199,11 +203,11 @@ firstItems = [
 
 changeItemsIn: InvoiceModel  -> List Item -> InvoiceModel
 changeItemsIn model list =
-    InvoiceModel  list model.newItem model.tax
+    InvoiceModel  model.counter list model.tax
 
 changeTaxIn: InvoiceModel -> Tax -> InvoiceModel
 changeTaxIn model tax =
-    InvoiceModel  model.items model.newItem tax
+    InvoiceModel model.counter  model.items tax
 
 toTax : String -> Tax
 toTax string =
@@ -224,7 +228,7 @@ toTax string =
 reduceInvoice : InvoiceModel -> ( Float, Float, Float )
 reduceInvoice invoice =
     let
-        itemTotal item = (toFloat item.quantity) * item.price
+        itemTotal item = if item.enabled then (toFloat item.quantity) * item.price else 0
         itemValues = List.map itemTotal invoice.items
         invoiceSubTotal = List.foldr (+) 0 itemValues
         tax = case invoice.tax of
@@ -237,6 +241,31 @@ reduceInvoice invoice =
 updateInvoiceModel : InvoiceAction -> InvoiceModel -> InvoiceModel
 updateInvoiceModel action invoiceModel =
     case action of 
+        DeleteItem  id -> 
+            let
+                newItems = List.filter
+                                (\i -> i.id /= id )
+                                invoiceModel.items
+                
+            in
+            changeItemsIn invoiceModel newItems
+        CheckItem  id checked  -> 
+            let
+                newItems = List.map 
+                                (\i -> if i.id == id then Item i.id i.text i.price i.quantity checked else i )
+                                invoiceModel.items
+                
+            in
+            changeItemsIn invoiceModel newItems
+        ChangeItemText  id text -> 
+            let
+                newItems = List.map 
+                                (\i -> if i.id == id then Item i.id text i.price i.quantity i.enabled else i )
+                                invoiceModel.items
+                
+            in
+            changeItemsIn invoiceModel newItems
+
         ChangeItemPrice  id string -> 
             let
                 price = case String.toFloat string of 
@@ -263,24 +292,63 @@ updateInvoiceModel action invoiceModel =
 
         ChangeInvoiceTaxUI str -> 
             changeTaxIn invoiceModel (toTax str)
+        AddNewItem ->
+            let
+                counter = invoiceModel.counter + 1
+                items = List.append invoiceModel.items [ emptyItem counter ]
+                invoiceModel2 = { invoiceModel | counter = counter }
+            in
+                { invoiceModel2 | items = items }
+
+
+
 
 viewInvoiceItem: Item -> Html InvoiceAction
 viewInvoiceItem item =  
-        tr [] [
-            td [] [ text item.text ]
-            , td [] [ input [   value (String.fromFloat item.price),
-                                Events.onInput  (ChangeItemPrice item.id) ]
-                            [] 
-                    ]
-            , td [] [ input [   value (String.fromInt item.quantity),
-                                Events.onInput  (ChangeItemQuantity item.id)]
-                            []
-                    ]
-            , td [] [ text (String.fromFloat ((toFloat item.quantity) * item.price))]
-        ]
+    let
+        total = if item.enabled
+                    then ((toFloat item.quantity) * item.price)
+                    else 0
+
+    in
+    tr [] [
+          td [] [ button [  Events.onClick  (DeleteItem item.id) ]
+                            [text "-"]  ]
+        , td [] [ input [   Html.Attributes.checked item.enabled, Html.Attributes.type_ "checkbox",
+                            Events.onCheck  (CheckItem item.id) ]
+                        []  ]
+        , td [] [ input [   value item.text,
+                            Events.onInput  (ChangeItemText item.id) ]
+                        []  ]
+        , td [] [ input [   value (String.fromFloat item.price),
+                            Events.onInput  (ChangeItemPrice item.id) ]
+                        [] 
+                ]
+        , td [] [ input [   value (String.fromInt item.quantity),
+                            Events.onInput  (ChangeItemQuantity item.id)]
+                        []
+                ]
+        , td [] [ text (String.fromFloat total)]
+    ]
+    
 
 viewInvoiceModel : InvoiceModel -> Html InvoiceAction
 viewInvoiceModel model =
+    
+        viewInvoiceModelTable model
+    
+
+viewInvoiceModelTableHeader =
+    tr [] [
+            th [] [ ], th [] [],
+        th [] [ text "Item" ]
+        , th [] [ text "Vlr Uni."]
+        , th [] [ text "Cant."]
+        , th [] [ text "Total"]
+    ]
+
+viewInvoiceModelTable : InvoiceModel -> Html InvoiceAction
+viewInvoiceModelTable model =
 
     let
         ( subTotal, tax, total ) = reduceInvoice model
@@ -295,34 +363,35 @@ viewInvoiceModel model =
     table []
         
         (
-
-            [   tr [] [
-                    td [] [ text "Item" ]
-                    , td [] [ text "Vlr Uni."]
-                    , td [] [ text "Cant."]
-                    , td [] [ text "Total"]
-                ]
+            [   
+                viewInvoiceModelTableHeader
             ]
             ++
             List.map viewInvoiceItem model.items
             ++
             [
                 tr [] [
-                    td [] [  ]
+                    td [] [ button [ Events.onClick AddNewItem ] [ text "+"] ]
+                ]
+                ,
+                tr [] [
+                    td [] [  ],td [] [  ],td [] [  ]
                     , td [] [ ]
                     , td [] [ text "Sub Total" ]
                     , td [] [ text  (String.fromFloat  subTotal ) ]
                 ]
                 ,
                 tr [] [
-                    td [] [  ]
+                    td [] [  ],td [] [  ],td [] [  ]
                     , td [] [ text "Impuesto" ]
-                    , td [] [ input [ value taxValue, Events.onInput ChangeInvoiceTaxUI ] [] ]
+                    , td [] [ input [   value taxValue,
+                                        Events.onInput ChangeInvoiceTaxUI ] [] ]
                     , td [] [ text  (String.fromFloat tax) ]
                 ]
                 ,
                 tr [] [
-                    td [] [  ]
+                    td [] [  ],td [] [  ],td [] [  ]
+
                     , td [] [ ]
                     , td [] [ text "Total" ]
                     , td [] [ text  (String.fromFloat  total ) ]
@@ -351,7 +420,7 @@ type Action =
 
 model0 : Model 
 model0 = Model  (TodoModel  100 firstTodos (emptyTodo 100))
-                (InvoiceModel firstItems (emptyItem (100)) (TaxRate 0.19) )
+                (InvoiceModel 100 firstItems (TaxRate 0.19) )
                 (CalcModel Nothing Nothing Noop "")
                 InvoiceTab
 
