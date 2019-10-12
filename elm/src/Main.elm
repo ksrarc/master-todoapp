@@ -5,208 +5,90 @@ import Html exposing (Html, button, div, text, ul, li, input,span, table, tr, td
 import Html.Attributes exposing (value,class, attribute, type_, checked, style)
 import Html.Events as Events
 
--- Modelos
+--------------------------------------------------------------------------------
+-- Begin Todos
 
-type Tab = TodoTab | CalcTab | InvoiceTab
-type CalcOperation = Plus | Minus | Mult | Div | Enter | Clean | Noop
-
-type alias Todo = { id: Int, text: String, checked: Bool }
-type alias Item = { id: Int, text: String, price: Float, quantity: Int, enabled: Bool }
-
-
-type alias CalcModel = { left : Maybe Float, right: Maybe Float, operation: CalcOperation, text: String }
-type alias TodoModel = { todos: List Todo, new: Todo }
-type Tax = TaxValue Float | TaxRate Float | NoTax
-type alias ItemModel = { items: List Item,
-                        newItem: Item,
-                        tax: Tax }
-type alias Model = {   
-                        counter: Int,
-                        todoModel : TodoModel,
-                        itemModel: ItemModel,
-                        calcModel: CalcModel,
-                        tab: Tab
-                    }
+type alias Todo = { id: Int,
+                    text: String,
+                    checked: Bool }
+type alias TodoModel = {    counter: Int,
+                            todos: List Todo,
+                            new: Todo }
 
 emptyTodo id = Todo id "" False
-emptyItem id = Item id "" 0 0 False
-
 firstTodos = [
         Todo 1 "Hola Mundo" False,
         Todo 2 "Cesar Arana" False,
         Todo 3 "Cesar Arana" False
     ]
-firstItems = [
-        Item 10 "CPU" 1000 2 True,
-        Item 11 "RAM" 500 4 True
-    ]
 
-counter0 = 100 -- (List.foldl max 0 (List.map (\t -> t.id) firstTodos)) + 1
+type TodoAction =   AddTodo Todo
+                |   CheckTodo Int Bool
+                |   DeleteTodo Int
+                |   UpdateNewTodo String
 
-model0 : Model 
-model0 = Model  (counter0)
-                (TodoModel firstTodos (emptyTodo counter0))
-                (ItemModel firstItems (emptyItem (counter0+1)) (TaxRate 0.19) )
-                (CalcModel Nothing Nothing Noop "")
-                InvoiceTab
--- Utils
-
-changeItemsIn: ItemModel  -> List Item -> ItemModel
-changeItemsIn model list =
-    ItemModel  list model.newItem model.tax
-
-changeTaxIn: ItemModel -> Tax -> ItemModel
-changeTaxIn model tax =
-    ItemModel  model.items model.newItem tax
-
-toTax : String -> Tax
-toTax string =
-    let
-        trimmed = String.trim string
-        cleaned = String.replace "%" "" trimmed
-        value = case String.toFloat cleaned of
-                    Nothing -> 0
-                    Just v -> v
-    in
-        case trimmed of
-            "" -> NoTax
-            _ ->
-                if      String.endsWith "%" trimmed
-                then    TaxRate (value / 100.0)
-                else    TaxValue value
-
-reduceInvoice : ItemModel -> ( Float, Float, Float )
-reduceInvoice itemModel =
-
-    let
-        itemTotal item = (toFloat item.quantity) * item.price
-        itemValues = List.map itemTotal itemModel.items
-        invoiceSubTotal = List.foldr (+) 0 itemValues
-        tax = case itemModel.tax of
-                TaxRate rate -> invoiceSubTotal * rate
-                TaxValue val -> val
-                NoTax -> 0
-
-    in ( invoiceSubTotal , tax, invoiceSubTotal + tax )
-
--- Updates
-
-type Action =
-        AddTodo Todo
-    |   CheckTodo Int Bool
-    |   DeleteTodo Int
-    |   UpdateNewTodo String
-
-    |   CalculatorClick String
-
-    |   ChangeItemPrice Int String -- mmm, debo hacerlo mejor, mas funcional
-    |   ChangeItemQuantity Int String -- aqui estoy trayendo valoes del gui y deberian se valores ya procesados por composicion
-    |   ChangeInvoiceTaxUI String 
-
-    |   ChangeTab Tab
-    |   IgnoreAction
-
-checkTodo : Todo ->Bool -> Todo
+checkTodo : Todo -> Bool -> Todo
 checkTodo todo check  =
     if xor todo.checked check
     then { todo | checked = check }
     else todo
 
-addTodo : Todo -> Model -> Model
-addTodo todo model =
-    let
-        model1 = { model    | counter = model.counter + 1 }
-        model2 = { model1   | todoModel = TodoModel (todo :: model1.todoModel.todos) (emptyTodo model1.counter) }
-    in
-        model2
+updateTodoModel : TodoAction -> TodoModel -> TodoModel
+updateTodoModel action model  =
+    case action of
+        AddTodo todo ->
+            let counter = (model.counter + 1) in
+            TodoModel counter
+                      (model.new :: model.todos)
+                      (emptyTodo counter)
 
-processCalc : String -> CalcModel -> CalcModel
-processCalc str model =
-    model
-
-update : Action -> Model -> Model
-update msg model =
-    case msg of 
-        AddTodo todo -> 
-            addTodo todo model
         UpdateNewTodo text ->
-            let
-                oldTodo = model.todoModel.new
-                newTodo = { oldTodo | text = text }
-            in
-                { model | todoModel = TodoModel model.todoModel.todos newTodo }
+            TodoModel model.counter
+                      model.todos
+                      (Todo model.new.id text model.new.checked)
+
         CheckTodo id check ->
-            let
+
+            let 
                 process : Todo -> Todo
-                process todo =
-                    if todo.id == id then checkTodo todo check  else todo
-
-                newTodos = List.map process model.todoModel.todos
+                process todo =  if todo.id == id
+                                then checkTodo todo check
+                                else todo
+                filtered = List.map process model.todos
             in 
-                { model | todoModel = TodoModel newTodos model.todoModel.new }
-        DeleteTodo id -> 
-            { model | todoModel = TodoModel (List.filter (\t -> not (t.id == id) ) model.todoModel.todos) model.todoModel.new }
+                TodoModel   model.counter
+                            filtered
+                            model.new
 
+        DeleteTodo id ->
+            let 
+                filtered = List.filter (\t -> t.id /= id ) model.todos
+            in 
+                TodoModel   model.counter
+                            filtered
+                            model.new
 
-        CalculatorClick str ->
-            { model | calcModel = processCalc str model.calcModel }
-
-        ChangeItemPrice id string -> 
-            let
-                price = case String.toFloat string of 
-                            Nothing -> 0
-                            Just val -> val
-                newItems = List.map 
-                                (\i -> if i.id == id then Item i.id i.text price i.quantity i.enabled else i )
-                                model.itemModel.items
-                newItemModel = changeItemsIn model.itemModel newItems
-            in
-            { model | itemModel = newItemModel }
-
-        ChangeItemQuantity id string -> 
-            
-            let
-                quantity = case String.toInt string of 
-                            Nothing -> 0
-                            Just val -> val
-                newItems = List.map 
-                                (\i -> if i.id == id then Item i.id i.text i.price quantity i.enabled else i )
-                                model.itemModel.items
-                newItemModel = changeItemsIn model.itemModel newItems
-            in
-            { model | itemModel = newItemModel }
-
-        ChangeInvoiceTaxUI str -> 
-
-            let
-                newItemModel = changeTaxIn model.itemModel (toTax str)
-            in
-                { model | itemModel = newItemModel }
-
-        ChangeTab tab ->
-            { model | tab = tab }
-
-        IgnoreAction -> model
-        
-
--- View
-
-viewTodo : Todo -> Html Action
+viewTodo : Todo -> Html TodoAction
 viewTodo todo =
     li  []
         [
-            input   [ type_ "checkbox", checked todo.checked, Events.onCheck (CheckTodo todo.id )  ] []
+            input   [   type_ "checkbox",
+                        checked todo.checked,
+                        Events.onCheck (CheckTodo todo.id)  ]
+                    []
             ,
-            span    [ style "text-decoration" ( if todo.checked then "line-through" else "unset" ) ]
+            span    [ style "text-decoration"
+                            (   if todo.checked
+                                then "line-through"
+                                else "unset" ) ]
                     [ text todo.text ]
             ,
             button  [ Events.onClick (DeleteTodo todo.id)]
                     [ text "x"]
         ]
 
-viewNewTodo : Todo -> Html Action
+viewNewTodo : Todo -> Html TodoAction
 viewNewTodo newTodo =
-
     div []
         [
             input   [ value newTodo.text, Events.onInput  UpdateNewTodo ] []
@@ -214,16 +96,28 @@ viewNewTodo newTodo =
             button  [ Events.onClick  (AddTodo newTodo) ] [ text "+" ]
         ]
 
-viewTodoTab : TodoModel -> Html Action
-viewTodoTab model =
+viewTodoModel : TodoModel -> Html TodoAction
+viewTodoModel model =
     div []
         [
             viewNewTodo model.new
             ,
             ul [] (List.map viewTodo model.todos)
         ]
+-- End Todos -- 
+--------------------------------------------------------------------------------
 
+--------------------------------------------------------------------------------
+-- Begin Calc
+type CalcOperation = Plus | Minus | Mult | Div | Enter | Clean | Noop
+type alias CalcModel = { left : Maybe Float,
+                         right: Maybe Float,
+                         operation: CalcOperation,
+                         text: String }
 
+processCalc : String -> CalcModel -> CalcModel
+processCalc str model =
+    model
 
 viewCalcButton :  CalcModel -> String -> Html Action
 viewCalcButton calc str =
@@ -248,7 +142,8 @@ viewCalcButton calc str =
         td  [ class ("calc-button " ++ str), attribute "colspan" colspan, attribute "rowspan" rowspan ]
             [ button [] [ text userstring ] ]
 
-viewCalcTab model =
+viewCalcModel : CalcModel -> Html Action
+viewCalcModel model =
     let
         vCalcB = viewCalcButton model
     in
@@ -276,17 +171,116 @@ viewCalcTab model =
                     ]
         ]
 
-viewItem: Item -> Html Action
-viewItem item =  
+-- End Calc
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+-- Begin Invoice
+type alias Item = { id: Int,
+                    text: String,
+                    price: Float, 
+                    quantity: Int, 
+                    enabled: Bool }
+type Tax = TaxValue Float | TaxRate Float | NoTax
+type alias InvoiceModel = { items: List Item,
+                        newItem: Item,
+                        tax: Tax }
+
+type InvoiceAction =
+        ChangeItemPrice Int String -- mmm, debo hacerlo mejor, mas funcional
+    |   ChangeItemQuantity Int String -- aqui estoy trayendo valoes del gui y deberian se valores ya procesados por composicion
+    |   ChangeInvoiceTaxUI String 
+
+emptyItem id = Item id "" 0 0 False
+firstItems = [
+        Item 10 "CPU" 1000 2 True,
+        Item 11 "RAM" 500 4 True
+    ]
+
+changeItemsIn: InvoiceModel  -> List Item -> InvoiceModel
+changeItemsIn model list =
+    InvoiceModel  list model.newItem model.tax
+
+changeTaxIn: InvoiceModel -> Tax -> InvoiceModel
+changeTaxIn model tax =
+    InvoiceModel  model.items model.newItem tax
+
+toTax : String -> Tax
+toTax string =
+    let
+        trimmed = String.trim string
+        cleaned = String.replace "%" "" trimmed
+        value = case String.toFloat cleaned of
+                    Nothing -> 0
+                    Just v -> v
+    in
+        case trimmed of
+            "" -> NoTax
+            _ ->
+                if      String.endsWith "%" trimmed
+                then    TaxRate (value / 100.0)
+                else    TaxValue value
+
+reduceInvoice : InvoiceModel -> ( Float, Float, Float )
+reduceInvoice invoice =
+    let
+        itemTotal item = (toFloat item.quantity) * item.price
+        itemValues = List.map itemTotal invoice.items
+        invoiceSubTotal = List.foldr (+) 0 itemValues
+        tax = case invoice.tax of
+                TaxRate rate -> invoiceSubTotal * rate
+                TaxValue val -> val
+                NoTax -> 0
+
+    in ( invoiceSubTotal , tax, invoiceSubTotal + tax )
+
+updateInvoiceModel : InvoiceAction -> InvoiceModel -> InvoiceModel
+updateInvoiceModel action invoiceModel =
+    case action of 
+        ChangeItemPrice  id string -> 
+            let
+                price = case String.toFloat string of 
+                            Nothing -> 0
+                            Just val -> val
+                newItems = List.map 
+                                (\i -> if i.id == id then Item i.id i.text price i.quantity i.enabled else i )
+                                invoiceModel.items
+                
+            in
+            changeItemsIn invoiceModel newItems
+
+        ChangeItemQuantity id string -> 
+            
+            let
+                quantity = case String.toInt string of 
+                            Nothing -> 0
+                            Just val -> val
+                newItems = List.map 
+                                (\i -> if i.id == id then Item i.id i.text i.price quantity i.enabled else i )
+                                invoiceModel.items
+            in
+                changeItemsIn invoiceModel newItems
+
+        ChangeInvoiceTaxUI str -> 
+            changeTaxIn invoiceModel (toTax str)
+
+viewInvoiceItem: Item -> Html InvoiceAction
+viewInvoiceItem item =  
         tr [] [
             td [] [ text item.text ]
-            , td [] [ input [ value (String.fromFloat item.price), Events.onInput  (ChangeItemPrice item.id)] []  ]
-            , td [] [ input [ value (String.fromInt item.quantity), Events.onInput  (ChangeItemQuantity item.id)] []  ]
+            , td [] [ input [   value (String.fromFloat item.price),
+                                Events.onInput  (ChangeItemPrice item.id) ]
+                            [] 
+                    ]
+            , td [] [ input [   value (String.fromInt item.quantity),
+                                Events.onInput  (ChangeItemQuantity item.id)]
+                            []
+                    ]
             , td [] [ text (String.fromFloat ((toFloat item.quantity) * item.price))]
         ]
 
-viewInvoiceTab : ItemModel -> Html Action
-viewInvoiceTab model =
+viewInvoiceModel : InvoiceModel -> Html InvoiceAction
+viewInvoiceModel model =
 
     let
         ( subTotal, tax, total ) = reduceInvoice model
@@ -310,7 +304,7 @@ viewInvoiceTab model =
                 ]
             ]
             ++
-            List.map viewItem model.items
+            List.map viewInvoiceItem model.items
             ++
             [
                 tr [] [
@@ -337,30 +331,82 @@ viewInvoiceTab model =
         )
 
 
+-- End Invoice
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+-- Begin App
+type Tab = TodoTab | CalcTab | InvoiceTab
+type alias Model = {    todoModel: TodoModel,
+                        invoiceModel: InvoiceModel,
+                        calcModel: CalcModel,
+                        tab: Tab }
+
+type Action =
+        MainTodoAction TodoAction
+
+    |   CalculatorClick String
+    |   MainInvoiceAction InvoiceAction
+    |   ChangeTab Tab
+
+model0 : Model 
+model0 = Model  (TodoModel  100 firstTodos (emptyTodo 100))
+                (InvoiceModel firstItems (emptyItem (100)) (TaxRate 0.19) )
+                (CalcModel Nothing Nothing Noop "")
+                InvoiceTab
+
+-- End App
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+-- Main
+
+update : Action -> Model -> Model
+update msg model =
+    case msg of 
+        
+        MainTodoAction action ->
+            { model | todoModel = updateTodoModel action model.todoModel  }
+            
+        CalculatorClick str ->
+            { model | calcModel = processCalc str model.calcModel }
+
+        MainInvoiceAction action ->
+            { model | invoiceModel = updateInvoiceModel action model.invoiceModel }
+
+        ChangeTab tab ->
+            { model | tab = tab }
+
 view : Model -> Html Action
 view model =
     div [] [
         ul  []
             [
-                li [] [ button [ Events.onClick (ChangeTab TodoTab)] [ text "Todo"] ]
+                li [] [ button  [ Events.onClick (ChangeTab TodoTab)]
+                                [ text "Todo"] ]
                 ,
-                li [] [ button [ Events.onClick (ChangeTab CalcTab)] [ text "Calc"] ]
+                li [] [ button  [ Events.onClick (ChangeTab CalcTab)]
+                                [ text "Calc"] ]
                 ,
-                li [] [ button [ Events.onClick (ChangeTab InvoiceTab)] [ text "Invoice"] ]
+                li [] [ button  [ Events.onClick (ChangeTab InvoiceTab)]
+                                [ text "Invoice"] ]
             ]
         ,
         case model.tab of
-            TodoTab -> viewTodoTab model.todoModel
-            CalcTab -> viewCalcTab model.calcModel
-            InvoiceTab -> viewInvoiceTab model.itemModel
+            TodoTab -> Html.map MainTodoAction (viewTodoModel model.todoModel)
+            CalcTab -> viewCalcModel model.calcModel
+            InvoiceTab -> Html.map  MainInvoiceAction
+                                    (viewInvoiceModel model.invoiceModel)
     ]
-    
-
-
--- Main
 
 main = Browser.sandbox {
         init = model0,
         view = view,
         update = update
     }
+
+-- End Main
+--------------------------------------------------------------------------------
+
+
+
