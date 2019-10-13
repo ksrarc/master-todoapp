@@ -98,7 +98,7 @@ viewNewTodo newTodo =
 
 viewTodoModel : TodoModel -> Html TodoAction
 viewTodoModel model =
-    div []
+    div [ class "todo"]
         [
             viewNewTodo model.new
             ,
@@ -224,7 +224,7 @@ viewCalcModel model =
                     ("", Just v) -> String.fromFloat v
                     (i,_) -> i
     in
-    div [] [
+    div [ class "calc"] [
         span [] [
             input [ attribute "readonly" "",
                 value  <| o2s model.operation  ] [],
@@ -414,8 +414,9 @@ viewInvoiceItem item =
 
 viewInvoiceModel : InvoiceModel -> Html InvoiceAction
 viewInvoiceModel model =
-    
+    div [ class "invoice" ] [
         viewInvoiceModelTable model
+    ]
     
 
 viewInvoiceModelTableHeader =
@@ -502,7 +503,7 @@ model0 : Model
 model0 = Model  (TodoModel  100 firstTodos (emptyTodo 100))
                 (InvoiceModel 100 firstItems (TaxRate 0.19) )
                 (CalcModel Nothing "" Nothing)
-                CalcTab
+                TodoTab
 --
 -- End App
 --------------------------------------------------------------------------------

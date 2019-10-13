@@ -1,0 +1,94 @@
+
+$border-color: #EEE;
+$calc-button-size: 5em;
+
+body > h1 {
+    text-align: center;
+}
+ul {
+    list-style: none;
+}
+
+.todoapp {
+    margin: 1em;
+    border: 1px solid $border-color;
+
+    > div > ul {
+        list-style: none;
+        text-align: center;
+        padding: .5em 0em;
+        margin: 0em 0em;
+        border-bottom: 1px solid $border-color;
+        
+    }
+
+    > div > ul > li {
+        display: inline;
+        margin-left: 1em;
+        margin-right: 1em;
+
+        button {
+            min-width: 5em;
+        }
+    }
+
+    > div > div {
+        max-width: 18em;
+        margin: auto;
+        padding: 1em;
+        text-align: center;
+    }
+
+    .todo {
+        > div > input {
+            max-width: 13em;
+        }
+        > ul {
+            padding: 1em;
+            text-align: left;
+            margin: 0;
+        }
+        li span {
+            display: inline-block;
+            width: 11em;
+        }
+    }
+
+    .calc {
+        table {
+            margin-left: auto;
+            margin-right: auto;
+        }
+        td {
+            margin:0px;
+            padding: 1px;
+        }
+        td[rowspan="2"] button {
+            height: $calc-button-size;
+        }
+        td[colspan="2"] button {
+            width: $calc-button-size;
+        }
+        button {
+            min-width: 2.5em;
+            min-height: 2.5em;
+            margin: 0px;
+            padding: 0px;
+        }
+        > div > div > span  {
+            min-width: 10.4em;
+        }
+        > span >input:first-child {
+            max-width: 1em;
+            padding-left: 0px;
+            padding-right: 0px;
+            border-right: none;
+        }
+        > span >input:last-child {
+            max-width: 9.4em;
+            border-left:none;
+            text-align: right;
+        }
+    }
+
+}
