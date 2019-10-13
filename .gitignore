@@ -1,3 +1,6 @@
 elm-stuff
 todoapp-elm.js
 publish
+node_modules
+/style.css
+/index.html

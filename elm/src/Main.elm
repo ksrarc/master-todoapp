@@ -7,7 +7,7 @@ import Html.Events as Events
 
 --------------------------------------------------------------------------------
 -- Begin Todos
-
+--
 type alias Todo = { id: Int,
                     text: String,
                     checked: Bool }
@@ -109,67 +109,147 @@ viewTodoModel model =
 
 --------------------------------------------------------------------------------
 -- Begin Calc
-type CalcOperation = Plus | Minus | Mult | Div | Enter | Clean | Noop
-type alias CalcModel = { left : Maybe Float,
-                         right: Maybe Float,
-                         operation: CalcOperation,
-                         text: String }
+type CalcOperation = Plus | Minus | Mult | Div | Enter
+type alias CalcModel = { prev : Maybe Float,
+                         input: String,
+                         operation: Maybe CalcOperation }
+type CalcAction = CalcClear
+                | CalcDot
+                | CalcEnter
+                | CalcOper CalcOperation
+                | CalcNumber Int
 
-processCalc : String -> CalcModel -> CalcModel
-processCalc str model =
-    model
+resolveOperation : Maybe Float ->  Maybe CalcOperation -> String -> Maybe Float
+resolveOperation prev oper str =
+    let convert = String.toFloat str
+    in case ( convert, oper, prev ) of
+        ( Just right, Just Plus, Just left ) -> Just <| left + right
+        ( Just right, Just Minus, Just left ) -> Just <| left - right
+        ( Just right, Just Mult, Just left ) -> Just <| left * right
+        ( Just right, Just Div, Just left ) -> Just <| left / right
+        ( Just right, Just Enter, Just left ) -> Just <| right
+        ( Just right, _, Nothing ) -> Just <| right
+        _ ->  prev
 
-viewCalcButton :  CalcModel -> String -> Html Action
+o2s : Maybe CalcOperation -> String
+o2s oper =
+    case oper of
+    (Just Plus) -> " +"
+    (Just Minus) -> " -"
+    (Just Div) -> " /"
+    (Just Mult) -> " *"
+    _ -> ""
+
+processCalc : CalcAction -> CalcModel -> CalcModel
+processCalc action model =
+    case ( action, model ) of 
+
+    ( CalcClear, { input, operation } ) -> 
+        CalcModel Nothing "" Nothing
+        {- case operation of
+            Just _ -> { model | operation = Nothing }
+            _ -> { model | input = String.slice 0 -1 input } 
+            -}
+
+    ( CalcNumber n, { input, prev, operation } ) ->
+        let
+            text = case (input,prev) of
+                    ("",Nothing) -> input ++ String.fromInt n
+                    ("",Just op) -> String.fromInt n
+                    (_,_) -> input ++ String.fromInt n
+            nprev = case operation of
+                Nothing -> Nothing
+                _ -> prev
+        in
+            CalcModel nprev text model.operation
+
+    ( CalcDot, { input } ) ->
+        let
+            text = if String.contains "." input
+                    then input
+                    else input ++ "."
+        in
+            CalcModel model.prev text model.operation
+
+    ( CalcOper op, { prev, input, operation } ) ->
+        case (prev) of
+        (Nothing) -> CalcModel (String.toFloat input) "" <| Just op
+        (Just _) ->
+            let
+                result = resolveOperation prev operation input
+                text = ""
+            in
+                CalcModel  result text (Just op)
+
+    (CalcEnter, {prev,operation,input} ) ->
+        let
+            result = resolveOperation prev operation input
+            text = ""
+        in
+            CalcModel  result text Nothing
+
+
+viewCalcButton :  CalcModel -> String -> Html CalcAction
 viewCalcButton calc str =
     let
-        userstring = case str of
-            "div" -> "/"
-            "mult" -> "*"
-            "minus" -> "-"
-            "plus" -> "+"
-            "enter" -> "="
-            "dot" -> "."
-            _ -> str
         colspan = case str of
             "0" -> "2"
-            "dot" -> "2"
             _ -> "1"
         rowspan = case str of
-            "plus" -> "2"
-            "enter" -> "2"
+            "+" -> "2"
+            "=" -> "2"
             _ -> "1"
+        action = case str of 
+            "C" -> CalcClear
+            "/" -> CalcOper Div
+            "*" -> CalcOper Mult
+            "-" -> CalcOper Minus
+            "+" -> CalcOper Plus
+            "=" -> CalcEnter
+            "." -> CalcDot
+            _ -> CalcNumber <| case String.toInt str of
+                                    Just n -> n
+                                    _ -> 0
     in
-        td  [ class ("calc-button " ++ str), attribute "colspan" colspan, attribute "rowspan" rowspan ]
-            [ button [] [ text userstring ] ]
+        td  [ class ("calc-button " ++ str),
+              attribute "colspan" colspan,
+              attribute "rowspan" rowspan ]
+            [ button [ Events.onClick action] [ text str ] ]
 
-viewCalcModel : CalcModel -> Html Action
+viewCalcModel : CalcModel -> Html CalcAction
 viewCalcModel model =
     let
-        vCalcB = viewCalcButton model
+        vCb = viewCalcButton model
+        display = case (model.input,model.prev) of
+                    ("", Just v) -> String.fromFloat v
+                    (i,_) -> i
     in
-    div []
-        [
-            input [ attribute "readonly" "" ] []
-            ,
-            table   []
-                    [
-                        tr [] [
-                            vCalcB "C", vCalcB "div", vCalcB "mult", vCalcB "minus"
-                        ],
-                        tr [] [
-                            vCalcB "7", vCalcB "8", vCalcB "9", vCalcB "plus"
-                        ],
-                        tr [] [
-                            vCalcB "4", vCalcB "5", vCalcB "6"
-                        ],
-                        tr [] [
-                            vCalcB "1", vCalcB "2", vCalcB "3", vCalcB "enter"
-                        ],
-                        tr [] [
-                            vCalcB "0", vCalcB "dot"
-                        ]
-                    ]
+    div [] [
+        span [] [
+            input [ attribute "readonly" "",
+                value  <| o2s model.operation  ] [],
+            input [ attribute "readonly" "",
+                value  display  ] []
         ]
+        ,
+        table [] [
+            tr [] [
+                vCb "C", vCb "/", vCb "*", vCb "-"
+            ],
+            tr [] [
+                vCb "7", vCb "8", vCb "9", vCb "+"
+            ],
+            tr [] [
+                vCb "4", vCb "5", vCb "6"
+            ],
+            tr [] [
+                vCb "1", vCb "2", vCb "3", vCb "="
+            ],
+            tr [] [
+                vCb "0", vCb "."
+            ]
+        ]
+    ]
 
 -- End Calc
 --------------------------------------------------------------------------------
@@ -414,16 +494,16 @@ type alias Model = {    todoModel: TodoModel,
 type Action =
         MainTodoAction TodoAction
 
-    |   CalculatorClick String
+    |   MainCalcAction CalcAction
     |   MainInvoiceAction InvoiceAction
     |   ChangeTab Tab
 
 model0 : Model 
 model0 = Model  (TodoModel  100 firstTodos (emptyTodo 100))
                 (InvoiceModel 100 firstItems (TaxRate 0.19) )
-                (CalcModel Nothing Nothing Noop "")
-                InvoiceTab
-
+                (CalcModel Nothing "" Nothing)
+                CalcTab
+--
 -- End App
 --------------------------------------------------------------------------------
 
@@ -437,8 +517,8 @@ update msg model =
         MainTodoAction action ->
             { model | todoModel = updateTodoModel action model.todoModel  }
             
-        CalculatorClick str ->
-            { model | calcModel = processCalc str model.calcModel }
+        MainCalcAction action ->
+            { model | calcModel = processCalc action model.calcModel }
 
         MainInvoiceAction action ->
             { model | invoiceModel = updateInvoiceModel action model.invoiceModel }
@@ -449,23 +529,22 @@ update msg model =
 view : Model -> Html Action
 view model =
     div [] [
-        ul  []
-            [
-                li [] [ button  [ Events.onClick (ChangeTab TodoTab)]
-                                [ text "Todo"] ]
-                ,
-                li [] [ button  [ Events.onClick (ChangeTab CalcTab)]
-                                [ text "Calc"] ]
-                ,
-                li [] [ button  [ Events.onClick (ChangeTab InvoiceTab)]
-                                [ text "Invoice"] ]
-            ]
+        ul  [] [
+            li [] [ button  [ Events.onClick (ChangeTab TodoTab)]
+                            [ text "Todo"] ]
+            ,
+            li [] [ button  [ Events.onClick (ChangeTab CalcTab)]
+                            [ text "Calc"] ]
+            ,
+        li [] [ button  [ Events.onClick (ChangeTab InvoiceTab)]
+                            [ text "Invoice"] ]
+        ]
         ,
         case model.tab of
-            TodoTab -> Html.map MainTodoAction (viewTodoModel model.todoModel)
-            CalcTab -> viewCalcModel model.calcModel
-            InvoiceTab -> Html.map  MainInvoiceAction
-                                    (viewInvoiceModel model.invoiceModel)
+            TodoTab -> Html.map MainTodoAction <| viewTodoModel model.todoModel
+            CalcTab -> Html.map MainCalcAction <| viewCalcModel model.calcModel
+            InvoiceTab -> Html.map  MainInvoiceAction <|
+                                    viewInvoiceModel model.invoiceModel
     ]
 
 main = Browser.sandbox {
