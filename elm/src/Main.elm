@@ -391,46 +391,25 @@ viewInvoiceItem item =
                     else 0
 
     in
-    tr [] [
-          td [] [ button [  Events.onClick  (DeleteItem item.id) ]
-                            [text "-"]  ]
-        , td [] [ input [   Html.Attributes.checked item.enabled, Html.Attributes.type_ "checkbox",
-                            Events.onCheck  (CheckItem item.id) ]
-                        []  ]
-        , td [] [ input [   value item.text,
-                            Events.onInput  (ChangeItemText item.id) ]
-                        []  ]
-        , td [] [ input [   value (String.fromFloat item.price),
-                            Events.onInput  (ChangeItemPrice item.id) ]
-                        [] 
-                ]
-        , td [] [ input [   value (String.fromInt item.quantity),
-                            Events.onInput  (ChangeItemQuantity item.id)]
-                        []
-                ]
-        , td [] [ text (String.fromFloat total)]
+    li [] [
+        span [] [ button [  Events.onClick  (DeleteItem item.id) ] [text "-"]
+                , input [   Html.Attributes.checked item.enabled,
+                            Html.Attributes.type_ "checkbox",
+                            Events.onCheck  (CheckItem item.id) ] []
+            ]
+        , input [   value item.text,
+                    Events.onInput  (ChangeItemText item.id) ] []
+          
+        , input [   value (String.fromFloat item.price),
+                            Events.onInput  (ChangeItemPrice item.id) ] [] 
+        , input [   value (String.fromInt item.quantity),
+                            Events.onInput  (ChangeItemQuantity item.id)] []
+        , span [] [ text (String.fromFloat total)]
     ]
     
 
 viewInvoiceModel : InvoiceModel -> Html InvoiceAction
 viewInvoiceModel model =
-    div [ class "invoice" ] [
-        viewInvoiceModelTable model
-    ]
-    
-
-viewInvoiceModelTableHeader =
-    tr [] [
-            th [] [ ], th [] [],
-        th [] [ text "Item" ]
-        , th [] [ text "Vlr Uni."]
-        , th [] [ text "Cant."]
-        , th [] [ text "Total"]
-    ]
-
-viewInvoiceModelTable : InvoiceModel -> Html InvoiceAction
-viewInvoiceModelTable model =
-
     let
         ( subTotal, tax, total ) = reduceInvoice model
         taxValue =
@@ -440,45 +419,39 @@ viewInvoiceModelTable model =
             NoTax -> ""
 
     in
+    div [ class "invoice" ] [
+        viewInvoiceModelTable model,
+        div [] [
+            button [ Events.onClick AddNewItem ] [ text "+"]
+        ],
+        div [] [
+            span [] [ text "Sub Total" ],
+            span [] [ text  (String.fromFloat  subTotal ) ]
+        ],
+        div [] [
+            span [] [ text "Impuesto" ],
+            span [] [ input [   value taxValue,
+                                Events.onInput ChangeInvoiceTaxUI ] [] ],
+            span [] [ text  (String.fromFloat tax) ]
+        ]
+        ,
+        div [] [
+            span [] [ text "Total" ],
+            span [] [ text  (String.fromFloat  total ) ]
+        ]
+    ]
 
-    table []
-        
-        (
-            [   
-                viewInvoiceModelTableHeader
-            ]
-            ++
-            List.map viewInvoiceItem model.items
-            ++
-            [
-                tr [] [
-                    td [] [ button [ Events.onClick AddNewItem ] [ text "+"] ]
-                ]
-                ,
-                tr [] [
-                    td [] [  ],td [] [  ],td [] [  ]
-                    , td [] [ ]
-                    , td [] [ text "Sub Total" ]
-                    , td [] [ text  (String.fromFloat  subTotal ) ]
-                ]
-                ,
-                tr [] [
-                    td [] [  ],td [] [  ],td [] [  ]
-                    , td [] [ text "Impuesto" ]
-                    , td [] [ input [   value taxValue,
-                                        Events.onInput ChangeInvoiceTaxUI ] [] ]
-                    , td [] [ text  (String.fromFloat tax) ]
-                ]
-                ,
-                tr [] [
-                    td [] [  ],td [] [  ],td [] [  ]
+viewInvoiceModelTable : InvoiceModel -> Html InvoiceAction
+viewInvoiceModelTable model =
 
-                    , td [] [ ]
-                    , td [] [ text "Total" ]
-                    , td [] [ text  (String.fromFloat  total ) ]
-                ]
-            ]
-        )
+    ul [] <|
+        li [] [
+            span [][ text "Item"],
+            span [][ text "Vlr U."],
+            span [][ text "Cantidad"],
+            span [][ text "Total"]
+        ]
+        :: List.map viewInvoiceItem model.items
 
 
 -- End Invoice
@@ -503,7 +476,7 @@ model0 : Model
 model0 = Model  (TodoModel  100 firstTodos (emptyTodo 100))
                 (InvoiceModel 100 firstItems (TaxRate 0.19) )
                 (CalcModel Nothing "" Nothing)
-                TodoTab
+                InvoiceTab
 --
 -- End App
 --------------------------------------------------------------------------------

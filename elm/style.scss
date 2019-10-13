@@ -1,6 +1,7 @@
 
 $border-color: #EEE;
 $calc-button-size: 5em;
+$invoice-total-field-width: 5em;
 
 body > h1 {
     text-align: center;
@@ -89,6 +90,73 @@ ul {
             border-left:none;
             text-align: right;
         }
+    }
+
+    .invoice {
+        min-width:  29em;
+        text-align: left;
+
+        > ul {
+            padding: 0px;
+        }
+
+        li {
+            margin-bottom: .3em;
+        }
+
+        li:first-child {
+            text-align: right;
+
+            span:first-child {
+                max-width: 8em;
+                margin-right: .5em;
+                
+            }
+            span {
+                display: inline-block; 
+                min-width: $invoice-total-field-width;
+                margin-right: .2em; 
+            }
+        }
+        
+        li input:nth-child(2) {
+            max-width: 8em;
+            margin-right: .5em;
+            text-align: left;
+        }
+        li input {
+            max-width: 5em;
+            margin-right: .2em;
+            text-align: right;
+        }
+        li span:last-child {
+            display: inline-block;
+            text-align: right; 
+            min-width: $invoice-total-field-width; 
+        }
+ 
+        > div {
+            text-align: right; 
+            padding: 0px;
+            > * {
+                margin-right: .2em;
+            }
+            span:last-child {
+                display: inline-block;
+                text-align: right; 
+                min-width: $invoice-total-field-width; 
+            }
+            input:nth-child(2) {
+                max-width: 5em;
+            }
+            input {
+                max-width: 5em;
+                
+                text-align: right;
+            }
+        }
+
+        
     }
 
 }
