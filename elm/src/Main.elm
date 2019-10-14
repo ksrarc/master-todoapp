@@ -177,20 +177,18 @@ processCalc action model =
         (Just _) ->
             let
                 result = resolveOperation prev operation input
-                text = ""
             in
-                CalcModel  result text (Just op)
+                CalcModel  result "" (Just op)
 
     (CalcEnter, {prev,operation,input} ) ->
         let
             result = resolveOperation prev operation input
-            text = ""
         in
-            CalcModel  result text Nothing
+            CalcModel  result "" Nothing
 
 
-viewCalcButton :  CalcModel -> String -> Html CalcAction
-viewCalcButton calc str =
+viewCalcButton : String -> Html CalcAction
+viewCalcButton str =
     let
         colspan = case str of
             "0" -> "2"
@@ -211,15 +209,14 @@ viewCalcButton calc str =
                                     Just n -> n
                                     _ -> 0
     in
-        td  [ class ("calc-button " ++ str),
-              attribute "colspan" colspan,
+        td  [ attribute "colspan" colspan,
               attribute "rowspan" rowspan ]
             [ button [ Events.onClick action] [ text str ] ]
 
 viewCalcModel : CalcModel -> Html CalcAction
 viewCalcModel model =
     let
-        vCb = viewCalcButton model
+        vCb = viewCalcButton
         display = case (model.input,model.prev) of
                     ("", Just v) -> String.fromFloat v
                     (i,_) -> i
