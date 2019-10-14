@@ -1,5 +1,3 @@
-ELM_SRC=src/*.elm
-ELM_AST=style.css todoapp-elm.js
 .DEFAULT_GOAL=all
 
 install:
@@ -9,6 +7,6 @@ all:
 	npm run build
 
 clean:
-	rm -rfv ${ELM_AST}
+	rm -rfv build
 
 .PHONY: clean

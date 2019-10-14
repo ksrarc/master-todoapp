@@ -13,7 +13,7 @@ type alias Todo = { id: Int,
                     checked: Bool }
 type alias TodoModel = {    counter: Int,
                             todos: List Todo,
-                            new: Todo }
+                            newText: String }
 
 emptyTodo id = Todo id "" False
 firstTodos = [
@@ -22,7 +22,7 @@ firstTodos = [
         Todo 3 "Cesar Arana" False
     ]
 
-type TodoAction =   AddTodo Todo
+type TodoAction =   AddTodo
                 |   CheckTodo Int Bool
                 |   DeleteTodo Int
                 |   UpdateNewTodo String
@@ -36,16 +36,16 @@ checkTodo todo check  =
 updateTodoModel : TodoAction -> TodoModel -> TodoModel
 updateTodoModel action model  =
     case action of
-        AddTodo todo ->
+        AddTodo ->
             let counter = (model.counter + 1) in
             TodoModel counter
-                      (model.new :: model.todos)
-                      (emptyTodo counter)
+                      (Todo counter model.newText False :: model.todos)
+                      ""
 
         UpdateNewTodo text ->
             TodoModel model.counter
                       model.todos
-                      (Todo model.new.id text model.new.checked)
+                      text
 
         CheckTodo id check ->
 
@@ -58,7 +58,7 @@ updateTodoModel action model  =
             in 
                 TodoModel   model.counter
                             filtered
-                            model.new
+                            model.newText
 
         DeleteTodo id ->
             let 
@@ -66,7 +66,7 @@ updateTodoModel action model  =
             in 
                 TodoModel   model.counter
                             filtered
-                            model.new
+                            model.newText
 
 viewTodo : Todo -> Html TodoAction
 viewTodo todo =
@@ -87,20 +87,20 @@ viewTodo todo =
                     [ text "x"]
         ]
 
-viewNewTodo : Todo -> Html TodoAction
-viewNewTodo newTodo =
+viewNewTodo : String -> Html TodoAction
+viewNewTodo string =
     div []
         [
-            input   [ value newTodo.text, Events.onInput  UpdateNewTodo ] []
+            input   [ value string, Events.onInput  UpdateNewTodo ] []
             ,
-            button  [ Events.onClick  (AddTodo newTodo) ] [ text "+" ]
+            button  [ Events.onClick AddTodo ] [ text "+" ]
         ]
 
 viewTodoModel : TodoModel -> Html TodoAction
 viewTodoModel model =
     div [ class "todo"]
         [
-            viewNewTodo model.new
+            viewNewTodo model.newText
             ,
             ul [] (List.map viewTodo model.todos)
         ]
@@ -473,7 +473,7 @@ type Action =
     |   ChangeTab Tab
 
 model0 : Model 
-model0 = Model  (TodoModel  100 firstTodos (emptyTodo 100))
+model0 = Model  (TodoModel  100 firstTodos "")
                 (InvoiceModel 100 firstItems (TaxRate 0.19) )
                 (CalcModel Nothing "" Nothing)
                 InvoiceTab

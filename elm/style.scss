@@ -3,8 +3,10 @@ $border-color: #EEE;
 $calc-button-size: 5em;
 $invoice-total-field-width: 5em;
 
-body > h1 {
+body {
+    h1, div h3 {
     text-align: center;
+    }
 }
 ul {
     list-style: none;

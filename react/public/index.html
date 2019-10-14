@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>Todo Apps Live</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://unpkg.com/sanitize.css" rel="stylesheet" />
+  <link href="https://unpkg.com/sanitize.css/forms.css" rel="stylesheet" />
+  <link href="https://unpkg.com/sanitize.css/typography.css" rel="stylesheet" />
+  <link href="style.css" rel="stylesheet" />
+</head>
+
+<body>
+
+  <h1>Aplicaciones</h1>
+  <div>
+    <h3>React</h3>
+    <div class="todoapp" id="todoapp-react">
+      <!-- react no necesita mas anidacion -->
+    </div>
+    <h3>Elm</h3>
+    <div class="todoapp">
+			<div id="todoapp-elm"></div>
+		</div>
+  </div>
+  <script src="todoapp-elm.js"></script>
+  <script>
+    var app1 = Elm.TodoApp.init({
+			node: document.getElementById("todoapp-elm")
+		});
+  </script>
+</body>
+
+</html>
