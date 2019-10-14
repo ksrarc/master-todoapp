@@ -140,8 +140,7 @@ const CalcApp = connect(
     calcOper: (oper) => dispatch({type:CalcOper, oper})
   }}
 )(({prev,input,operation,calcClear,calcNumber, calcDot, calcEnter, calcOper})=>{
-  console.warn("r",prev, input);
-  let display = input == "" && prev != null ? prev : input ;
+  let display = input === "" && prev != null ? prev : input ;
   let vCb = (str) => viewCalcButton(calcClear,
                                     calcNumber,
                                     calcDot,
@@ -223,9 +222,168 @@ const calcModel = (state = {prev: null, input:"", operation:null}, {type, str,op
 
 //------------------------------------------------------------------------------
 // Invoice App
-function InvoiceApp (){
-  return (<div>invoice</div>);
-}
+
+const AddNewItem = 'AddNewItem';
+const DeleteItem = 'DeleteItem';
+const CheckItem = 'CheckItem';
+const ChangeItemText = 'ChangeItemText';
+const ChangeItemPrice = 'ChangeItemPrice';
+const ChangeItemQuantity = 'ChangeItemQuantity';
+const ChangeInvoiceTaxUI = 'ChangeInvoiceTaxUI';
+
+const viewInvoiceItem = (items,dispatchers) => {
+  let {
+    deleteItem,
+    checkItem,
+    changeItemText,
+    changeItemPrice,
+    changeItemQuantity
+  } = dispatchers;
+  return (
+    <>
+      {items.map((item)=>{
+        let total = item.checked ? item.quantity * item.price : 0;
+        return (<li key={item.id}>
+          <span>
+            <button onClick={()=>deleteItem(item.id)}>x</button>
+            <input checked={item.checked} type="checkbox" onChange={(e)=>checkItem(item.id,e.target.checked)}></input>
+          </span>
+          <input value={item.text} onChange={(e)=>changeItemText(item.id,e.target.value)}></input>
+          <input value={item.price} onChange={(e)=>changeItemPrice(item.id,e.target.value)}></input>
+          <input value={item.quantity} onChange={(e)=>changeItemQuantity(item.id,e.target.value)}></input>
+          <span>{total}</span>
+        </li>)
+      }
+      )}
+    </>
+  );
+};
+
+const InvoiceApp = connect(
+  (state) => {return {
+    items: state.invoiceModel.items,
+    tax: state.invoiceModel.tax
+  }},
+  (dispatch) => {return{
+    dispatchers: {
+      // como son muchos los encapsulo en un object para simplicar la firma.
+      // esto acosta de perder legibilidad.
+      addNewItem: () => dispatch({type:AddNewItem}),
+      deleteItem: (id) => dispatch({type:DeleteItem,id}),
+      checkItem: (id,checked)=>dispatch({type:CheckItem,id,checked}),
+      changeItemText: (id,text)=>dispatch({type:ChangeItemText,id,text}),
+      changeItemPrice: (id,price)=>dispatch({type:ChangeItemPrice,id,price}),
+      changeItemQuantity: (id,quantity)=>dispatch({type:ChangeItemQuantity,id,quantity}),
+      changeTax: (tax) => dispatch({type:ChangeInvoiceTaxUI,tax})
+    }
+  }}
+)(({items,tax,dispatchers}) => {
+  let ritems = viewInvoiceItem(items,dispatchers);
+  let vtax = tax.val + (tax.percent?" %":"");
+  let changeTax = dispatchers.changeTax;
+
+  let subtotal = items.reduce((sub,item)=>
+    sub + (item.checked?item.quantity*item.price:0)
+  ,0);
+  let taxValue = (tax.percent?(subtotal*tax.val/100):subtotal+tax.val);
+  let total = subtotal + taxValue;
+
+  return (
+    <div className="invoice">
+      <ul>
+        <li>
+          <span>Item</span>
+          <span>Vlr U.</span>
+          <span>Cantidad</span>
+          <span>Total</span>
+        </li>
+        { ritems }
+      </ul>
+      <div>
+        <button onClick={dispatchers.addNewItem}>+</button>
+      </div>
+      <div>
+        <span>Sub Total</span>
+        <span>{subtotal}</span>
+      </div>
+      <div>
+        <span>Impuesto</span>
+        <span><input value={vtax} onChange={(e)=>changeTax(e.target.value)}></input></span>
+        <span>{taxValue}</span>
+      </div>
+      <div>
+        <span>Total</span>
+        <span>{total}</span>
+      </div>
+    </div>
+  );
+});
+
+const _items = [
+  {id: 1, text: "CPU", price: 200, quantity: 3, checked: true}
+];
+
+const invoiceModel = (state={ items:_items, counter:100, tax: {percent:true, val:0} },
+                      {type, id, checked, text, price, quantity, tax}) => {
+  let { items, counter } = state;
+  if ( type === AddNewItem ) {
+    let ncounter = counter +1;
+    return {
+      ...state,
+      items: [...items, {id:ncounter, text:"", price:0, quantity:0, checked: true}],
+      counter: ncounter,
+      tax: { val: 0, percent: true }
+    };
+  }
+  if ( type === DeleteItem ) {
+    return {
+      ...state,
+      items: items.filter(i=>i.id!==id)
+    };
+  }
+  if ( type === CheckItem ) {
+    return {
+      ...state,
+      items: items.map(i=>i.id!==id?i:{...i,checked})
+    };
+  }
+  if ( type === ChangeItemText ) {
+    return {
+      ...state,
+      items: items.map(i=>i.id!==id?i:{...i,text})
+    };
+  }
+  if ( type === ChangeItemPrice ) {
+    let np = parseFloat(price);
+    if ( isNaN(np) ) return state;
+    return {
+      ...state,
+      items: items.map(i=>i.id!==id?i:{...i,price:np})
+    };
+  }
+  if ( type === ChangeItemQuantity ) {
+    let nq = parseFloat(quantity);
+    if ( isNaN(nq) ) return state;
+    return {
+      ...state,
+      items: items.map(i=>i.id!==id?i:{...i,quantity:nq})
+    };
+  }
+  if ( type === ChangeInvoiceTaxUI ) {
+    let percent = tax.indexOf("%") > -1;
+    let val = parseFloat(tax.replace(/%/g,""));
+    console.warn(percent,val);
+    if ( isNaN(val) ) val = 0;
+    return {
+      ...state,
+      tax: {
+        percent,
+        val
+      }
+    };
+  }
+  return state;
+};
 
 //------------------------------------------------------------------------------
 // Main App
@@ -265,14 +423,15 @@ const App = connect(
 });
 // Modelo inicial
 const store = createStore(combineReducers({
-  tab: (state = TodoTab,{type}) => {
+  tab: (state = InvoiceTab,{type}) => {
     if ( type === TodoTab ) return type;
     if ( type === CalcTab ) return type;
     if ( type === InvoiceTab ) return type;
     return state;
   },
   todoModel,
-  calcModel
+  calcModel,
+  invoiceModel
 }));
 
 function Root() {

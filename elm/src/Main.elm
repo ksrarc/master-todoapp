@@ -417,7 +417,14 @@ viewInvoiceModel model =
 
     in
     div [ class "invoice" ] [
-        viewInvoiceModelTable model,
+        ul [] <|
+            li [] [
+                span [][ text "Item"],
+                span [][ text "Vlr U."],
+                span [][ text "Cantidad"],
+                span [][ text "Total"]
+            ]
+            :: List.map viewInvoiceItem model.items,
         div [] [
             button [ Events.onClick AddNewItem ] [ text "+"]
         ],
@@ -437,18 +444,6 @@ viewInvoiceModel model =
             span [] [ text  (String.fromFloat  total ) ]
         ]
     ]
-
-viewInvoiceModelTable : InvoiceModel -> Html InvoiceAction
-viewInvoiceModelTable model =
-
-    ul [] <|
-        li [] [
-            span [][ text "Item"],
-            span [][ text "Vlr U."],
-            span [][ text "Cantidad"],
-            span [][ text "Total"]
-        ]
-        :: List.map viewInvoiceItem model.items
 
 
 -- End Invoice
