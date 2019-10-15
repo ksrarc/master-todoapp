@@ -3,6 +3,10 @@ import { createAction, createReducer, on, props, createSelector } from '@ngrx/st
 import { Action, Store, select, ActionReducerMap } from '@ngrx/store';
 import { Observable } from 'rxjs';
 
+const TodoTab : string = "todo";
+const CalcTab : string = "calc";
+const InvoiceTab : string = "invoice";
+
 //------------------------------------------------------------------------------
 //-- Todos
 
@@ -56,9 +60,8 @@ const todoModelSelector = (state:RootState) => state.todoModel;
 const todosSelector = createSelector(todoModelSelector, (model)=>model.todos);
 
 @Component({
-  selector: 'todos',
-  template: `
-  <div className="todo">
+  selector: `[data-cmp="${TodoTab}"]`,
+  template: `<div>
     <div>
       <input [(ngModel)]="newText" />
       <button (click)="onAddTodo()">+</button>
@@ -69,8 +72,7 @@ const todosSelector = createSelector(todoModelSelector, (model)=>model.todos);
         <span [ngStyle]="{textDecoration: todo.checked?'line-through':'unset'}" >{{ todo.text }}</span>
         <button (click)="onDeleteTodo(todo.id)">x</button>
       </li>
-    </ul>
-  </div>`
+    </ul></div>`
 })
 export class TodoComponent {
   todos: Observable<Array<Todo>>;
@@ -93,11 +95,10 @@ export class TodoComponent {
 //-- Calc
 
 @Component({
-  selector: 'calc',
+  selector: `.${CalcTab}`,
   template: `
-  <div class="calc">
-    calc
-  </div>`
+
+    calc`
 })
 export class CalcComponent {
 }
@@ -106,11 +107,9 @@ export class CalcComponent {
 //-- Invoice
 
 @Component({
-  selector: 'invoice',
+  selector: `.${InvoiceTab}`,
   template: `
-  <div class="invoice">
-    invoice
-  </div>`
+    invoice`
 })
 export class InvoiceComponent {
   title = 'todo';
@@ -118,9 +117,6 @@ export class InvoiceComponent {
 
 //------------------------------------------------------------------------------
 //-- Main
-const TodoTab : string = "TodoTab";
-const CalcTab : string = "CalcTab";
-const InvoiceTab : string = "InvoiceTab";
 interface AppState {
   tab: string;
 }
@@ -145,28 +141,30 @@ export const rootReducer : ActionReducerMap<RootState> = {
 
 const appSelector = (state) => state.app;
 @Component({
-  selector: 'app-root',
+  selector: '[todoapp-angular]',
   template: `
   <div class="todoapp">
-    <ul>
-        <li><button (click)="change2TodoTab()">Todo</button></li>
-        <li><button (click)="change2CalcTab()">Calc</button></li>
-        <li><button (click)="change2InvoiceTab()">Invoice</button></li>
-        <todos *ngIf="isTodoTab()"></todos>
-        <calc *ngIf="isCalcTab()"></calc>
-        <invoice *ngIf="isInvoiceTab()"></invoice>
-    </ul>
+    <div>
+      <ul>
+          <li><button (click)="change2TodoTab()">Todo</button></li>
+          <li><button (click)="change2CalcTab()">Calc</button></li>
+          <li><button (click)="change2InvoiceTab()">Invoice</button></li>
+      </ul>
+      <div [attr.data-cmp]="tabClass"></div>
+    <div>
 </div>`
 })
 export class AppComponent {
-  tab: string;
+  tabClass: string;
   constructor(private store: Store<RootState>) {
-    this.tab = null;
-    store.pipe(select(tabSelector)).subscribe(v=>this.tab=v);
+    this.tabClass = null;
+    store.pipe(select(tabSelector)).subscribe(
+      v=>{
+        console.info(v);
+        this.tabClass=v;
+      }
+    );
   }
-  isTodoTab = () => this.tab === TodoTab;
-  isCalcTab = () => this.tab === CalcTab;
-  isInvoiceTab = () => this.tab === InvoiceTab;
   change2TodoTab(){
     this.store.dispatch(changeTabAction({tab:TodoTab}));
   }
@@ -176,4 +174,8 @@ export class AppComponent {
   change2InvoiceTab(){
     this.store.dispatch(changeTabAction({tab:InvoiceTab}));
   }
+  isTodoTab = () => this.tabClass === TodoTab;
+  isCalcTab = () => this.tabClass === CalcTab;
+  isInvoiceTab = () => this.tabClass === InvoiceTab;
+
 }

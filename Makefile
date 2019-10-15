@@ -14,15 +14,19 @@ deploy: all
 	cp -v elm/*.js elm/*.css deploy
 	cp -v react/build/index.html deploy
 	cp -rv react/build/static deploy
+	cp -rv angular/dist/todo/*.js deploy/
 	${MC} mirror --overwrite  --remove deploy/ ${S3PATH}
 
-all: elm react 
+all: elm react angular
 
 elm:
 	${MAKE} -C elm all
 	
 react:
 	${MAKE} -C react all
+
+angular:
+	${MAKE} -C angular all
 
 clean:
 	${MAKE} -C elm clean
