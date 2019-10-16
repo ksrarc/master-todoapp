@@ -388,7 +388,6 @@ const invoiceModel = (state={ items:_items, counter:100, tax: {percent:true, val
 //------------------------------------------------------------------------------
 // Main App
 
-
 const TodoTab = "TodoTab";
 const CalcTab = "CalcTab";
 const InvoiceTab = "InvoiceTab";

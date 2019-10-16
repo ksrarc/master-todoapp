@@ -7,7 +7,7 @@ import * as App from './app.component';
 
 @NgModule({
   declarations: [
-    App.AppComponent, App.TodoComponent, App.CalcComponent, App.InvoiceComponent
+    App.AppComponent, App.TodoComponent, App.CalcComponent, App.InvoiceComponent, App.CalcButtonComponent
   ],
   imports: [
     BrowserModule, StoreModule.forRoot(App.rootReducer),
