@@ -2,6 +2,7 @@ import { Component, Input, ElementRef } from '@angular/core';
 import { createAction, createReducer, on, props, createSelector } from '@ngrx/store';
 import { Action, Store, select, ActionReducerMap } from '@ngrx/store';
 import { Observable } from 'rxjs';
+import { Statement } from '@angular/compiler';
 
 const TodoTab : string = "todo";
 const CalcTab : string = "calc";
@@ -37,7 +38,7 @@ const todoModelReducer = createReducer(
       ...state,
       counter: ncounter,
       todos: [...state.todos,{
-        id: ncounter,
+        id: state.counter,
         text: text,
         checked: false
       }]
@@ -249,13 +250,171 @@ export class CalcComponent {
 //------------------------------------------------------------------------------
 //-- Invoice
 
+interface Item {
+  id: number,
+  text: string,
+  price: number,
+  quantity: number,
+  checked: boolean
+}
+interface Tax {
+  percent: boolean,
+  value: number
+}
+interface InvoiceState {
+  //newText: string, no es necesario en el store?
+  items: Array<Item>,
+  tax: Tax,
+  counter:number
+}
+const addNewItem = createAction('[InvoiceComponent AddNew]');
+const deleteItem = createAction('[InvoiceComponent Delete]', props<{id:number}>());
+const checkItem = createAction('[InvoiceComponent Check]', props<{id:number, checked: boolean}>());
+const changeItemText = createAction('[InvoiceComponent ChangeText]',props<{id:number, text:string}>());
+const changeItemPrice = createAction('[InvoiceComponent ChangePrice]',props<{id:number, price:string}>());
+const changeItemQuantity = createAction('[InvoiceComponent ChangeQuantity]',props<{id:number,quantity:string}>());
+const changeInvoiceTaxUI = createAction('[InvoiceComponent ChangeTax]',props<{tax:string}>());
+const initialInvoiceModel:InvoiceState = {
+  items: [],
+  tax: {
+    percent:true,
+    value: 19
+  },
+  counter: 100
+}
+const invoiceModelReducer = createReducer(
+  initialInvoiceModel,
+  on(addNewItem,(state)=>{
+    let ncounter = state.counter+1;
+    return {
+      ...state,
+      items: [...state.items,{
+        id: state.counter,
+        text: "algos",
+        price: 2,
+        quantity: 3,
+        checked: true
+      }],
+      counter: ncounter
+    }
+  }),
+  on(deleteItem,(state,{id})=>{return{
+    ...state,
+    items: state.items.filter(i=>i.id !== id)
+  }}),
+  on(changeItemPrice,(state,{id,price})=>{
+    let nprice = parseFloat(price);
+    if ( isNaN(nprice) ) return state;
+    return{
+      ...state,
+      items: state.items.map(i=>i.id !== id? i : {...i, price:nprice})
+    };
+  }),
+  on(changeItemQuantity,(state,{id,quantity})=>{
+    let nquantity = parseFloat(quantity);
+    if ( isNaN(nquantity) ) return state;
+    return{
+      ...state,
+      items: state.items.map(i=>i.id !== id? i : {...i, quantity:nquantity})
+    };
+  }),
+  on(checkItem,(state,{id,checked})=>{
+    return {
+      ...state,
+      items: state.items.map( i=> i.id!==id? i : { ...i, checked})
+    }
+  }),
+  on(changeItemText,(state,{id,text})=>{
+    return {
+      ...state,
+      items: state.items.map( i=> i.id!==id? i : { ...i, text})
+    }
+  })
+);
+
+const invoiceModelSelector = (state:RootState) => state.invoiceModel;
+const invoiceItemSelector = createSelector(
+  invoiceModelSelector,
+  (state) => state.items.map( item => {
+    let total = item.checked ? item.quantity * item.price : 0;
+    return{
+    ...item,
+    total
+  };})
+);
+
 @Component({
   selector: `.${InvoiceTab}`,
   template: `
-    invoice`
+  <ng-container>
+    <ul>
+      <li>
+        <span>Item</span>
+        <span>Vlr U.</span>
+        <span>Cantidad</span>
+        <span>Total</span>
+      </li>
+      <li *ngFor="let item of items | async">
+        <span>
+          <button (click)="deleteItem(item.id)">x</button>
+          <input type="checkbox" [checked]="item.checked" (change)="checkItem(item.id,$event.target.checked)">
+        </span>
+        <input value="{{item.text}}"/>
+        <input value="{{item.price}}" (ngModelChange)="changePrice(item.id,$event.target.value)"/>
+        <input value="{{item.quantity}}" (ngModelChange)="changeQuantity(item.id,$event.target.value)"/>
+        <span>{{ item.total }}</span>
+      </li>
+    </ul>
+    <div>
+      <button (click)="addNew()">+</button>
+    </div>
+    <div>
+      <span>Sub Total</span>
+      <span>{{subtotal | async}}</span>
+    </div>
+    <div>
+      <span>Impuesto</span>
+      <span><input value="{{vtax | async}}" (change)="changeTax($event.target.value)" /></span>
+      <span>{{taxValue | async}}</span>
+    </div>
+    <div>
+      <span>Total</span>
+      <span>{{total | async}}</span>
+    </div>
+  </ng-container>
+  `
 })
 export class InvoiceComponent {
-  title = 'todo';
+  subtotal: Observable<number>;
+  taxValue: Observable<number>;
+  total: Observable<number>;
+  vtax: Observable<string>;
+  items: Observable<Item[]>;
+  constructor(private store: Store<RootState>) {
+    this.items = store.pipe(select(invoiceItemSelector));
+  }
+  addNew(){
+    this.store.dispatch(addNewItem());
+  }
+  changeTax(tax:string){
+    this.store.dispatch(changeInvoiceTaxUI({tax}));
+  }
+  deleteItem(id:number){
+    console.info(arguments);
+    this.store.dispatch(deleteItem({id}));
+  }
+  changePrice(id,price){
+    this.store.dispatch(changeItemPrice({id,price}))
+  }
+  changeQuantity(id,quantity){
+    this.store.dispatch(changeItemQuantity({id,quantity}))
+  }
+  checkItem(id,checked){
+    this.store.dispatch(checkItem({id,checked}));
+  }
+  checkText(id,text){
+    this.store.dispatch(changeItemText({id,text}));
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -264,13 +423,14 @@ interface AppState {
   tab: string;
 }
 const initialState : AppState = {
-  tab: CalcTab
+  tab: InvoiceTab
 };
 const tabSelector = (state:RootState) => state.app.tab;
 export interface RootState {
   app: AppState;
   todoModel: TodoState,
-  calcModel: CalcState
+  calcModel: CalcState,
+  invoiceModel: InvoiceState
 }
 
 const changeTabAction = createAction("[App] ChangeTab", props<{tab:string}>());
@@ -281,7 +441,8 @@ export const rootReducer : ActionReducerMap<RootState> = {
     on(changeTabAction, (state,{tab}) => {return {...state,tab}} )
   ),
   todoModel: todoModelReducer,
-  calcModel: calcModelReducer
+  calcModel: calcModelReducer,
+  invoiceModel: invoiceModelReducer
 }
 
 const appSelector = (state) => state.app;
