@@ -7,6 +7,7 @@ Vue.config.productionTip = false;
 ////////////////////////////////////////////////////////////////////////////////
 // Todo
 const todoStoreModule = {
+  namespaced: true,
   state: {
     todos: [{
       id: 1, text: "hola mundo", checked: false
@@ -67,26 +68,115 @@ Vue.component('todos', {
         };
       })
     }),
-    ...mapGetters(["newText"])
+    ...mapGetters("todo",["newText"])
   },
-  //methods: mapMutations(["checkTodo"])
-  // paul no sabe ... 
   methods: {
     checkTodo(id,checked){
-      this.$store.commit('checkTodo',{id,checked});
+      this.$store.commit('todo/checkTodo',{id,checked});
     },
-    ...mapMutations(["newTodo","deleteTodo","changeNewText"])
+    ...mapMutations("todo",["newTodo","deleteTodo","changeNewText"])
   }
 });
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 // Calc
+
+/*
+const CalcClear = 'CalcClear';
+const CalcDot = 'CalcDot';
+const CalcEnter = 'CalcEnter';
+const CalcOper = 'CalcOper';
+const CalcNumber = 'CalcNumber';
+const numberSet = new Set(["0","1","2","3","4","5","6","7","8","9"]);
+const operSet = new Set(["+","-","*","/"]);
+*/
+const resolveOperation = (left, operation, input) => {
+  let right = parseFloat(input);
+  console.warn(left, operation, input, right);
+  if ( !isNaN(right) && operation === "+" && !isNaN(left) ) return left + right;
+  if ( !isNaN(right) && operation === "-" && !isNaN(left) ) return left - right;
+  if ( !isNaN(right) && operation === "*" && !isNaN(left) ) return left * right;
+  if ( !isNaN(right) && operation === "/" && !isNaN(left) ) return left / right;
+  if ( !isNaN(right) && operation === "=" ) return right;
+  if ( !isNaN(right) && left === null ) return right;
+  return left;
+};
+Vue.component('vCb', {
+  template:`
+  <td :colspan="colspan" :rowspan="rowspan">
+    <button @click="handleButton(b)">{{b}}</button>
+  </td>`,
+  props:['b'],
+  computed: {
+    colspan(){
+      return this.b === '0'?"2":"1";
+    },
+    rowspan(){
+      return ( this.b === "+" || this.b === "=" )?"2":"1";
+    }
+  },
+  methods: mapMutations("calc",["handleButton"])
+});
+const calcStoreModule = {
+  namespaced: true,
+  state: {
+    prev: null,
+    input: '',
+    operation: null
+  },
+  mutations:{
+    handleButton(state,b){
+      if ( b === "C" ) {
+        state.prev = null;
+        state.input = '';
+        state.operation = null;
+      } else if ( b==="." ) {
+        if ( state.input.indexOf(".") <= -1 )
+          state.input += ".";
+      } else if ( b.match(/\d/) ) {
+        state.prev = state.operation == null ? null :  state.prev;
+        if ( state.input === "" && state.prev == null ) state.input+= b;
+        else if ( state.input === "" && state.prev != null ) state.input = b;
+        else state.input+= b;
+      } else if ( b ==='=') {
+        state.input = '';
+        state.operation = null;
+        state.prev = resolveOperation(state.prev,state.operation,state.input);
+      } else if ( b.match(/\+|-|\*|\//) ) {
+        if ( state.prev == null ) {
+          state.prev = parseFloat(state.input);
+          state.input = '';
+          state.operation = b;
+        } else {
+          state.input = '';
+        state.operation = b;
+        state.prev = resolveOperation(state.prev,state.operation,state.input);
+        }
+      }
+    }
+  }
+};
 Vue.component('calc', {
   template: `
-  <div>
-    Calc
-  </div>`  
+  <div class="calc">
+    <span>
+      <input readonly=true :value="operation"/>
+      <input readonly=true :value="input" />
+    </span>
+    <table>
+      <tbody>
+      <tr><vCb b="C"/><vCb b="/"/><vCb b="*"/><vCb b="-"/></tr>
+      <tr><vCb b="7"/><vCb b="8"/><vCb b="9"/><vCb b="+"/></tr>
+      <tr><vCb b="4"/><vCb b="5"/><vCb b="6"/></tr>
+      <tr><vCb b="1"/><vCb b="2"/><vCb b="3"/><vCb b="="/></tr>
+      <tr><vCb b="0"/><vCb b="."/></tr>
+      </tbody>
+    </table>
+  </div>`,
+  computed: {
+    ...mapState("calc",["input","operation"]),
+  }
 });
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -106,7 +196,7 @@ const InvoiceTab = 'InvoiceTab';
 
 const appStoreModule = {
   state: {
-    tab: TodoTab
+    tab: CalcTab
   },
   getters: {
     isTodoTab: state => state.tab === TodoTab,
@@ -151,7 +241,8 @@ const store = new Vuex.Store({
   strict: process.env.NODE_ENV !== 'production',
   modules: {
     app: appStoreModule,
-    todo: todoStoreModule
+    todo: todoStoreModule,
+    calc: calcStoreModule
   }
 });
 new Vue({
