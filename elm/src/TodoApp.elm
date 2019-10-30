@@ -513,7 +513,7 @@ view model =
                                     viewInvoiceModel model.invoiceModel
     ]
 
-main = Browser.sandbox {
+main = Browser.sandbox {  
         init = model0,
         view = view,
         update = update

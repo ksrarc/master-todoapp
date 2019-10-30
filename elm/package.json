@@ -9,7 +9,7 @@
     "build:elm": "elm make --output=todoapp-elm.js src/*.elm",
     "build:css": "node-sass-chokidar 'style.scss' 'style.css'",
     "build": "npm-run-all build:*",
-    "dev": "run-p develop:*"
+    "dev": "run-p develop:* build:*"
   },
   "author": "",
   "license": "ISC",
