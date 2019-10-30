@@ -1,31 +1,96 @@
 import Vue from 'vue/dist/vue.common.dev'
-import Vuex from 'vuex'
+import Vuex, { mapState, mapGetters, mapMutations} from 'vuex'
 import 'es6-promise/auto'
 Vue.use(Vuex)
 Vue.config.productionTip = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Todo
+const todoStoreModule = {
+  state: {
+    todos: [{
+      id: 1, text: "hola mundo", checked: false
+    },{
+      id: 2, text: "cesar arana", checked: false
+    }],
+    newText: "",
+    counter: 100
+  },
+  getters: {
+    newText: state => state.newText
+  },
+  mutations: {
+    checkTodo(state,{id,checked}) {
+      state.todos = state.todos.map(t => t.id === id? {...t, checked} : t );
+    },
+    deleteTodo(state,id) {
+      state.todos = state.todos.filter(t => t.id !== id);
+    },
+    changeNewText(state,text){
+      state.newText =text;
+    },
+    newTodo(state){
+      state.todos = [...state.todos, {
+        id: state.counter,
+        text: state.newText,
+        checked: false
+      }];
+      state.counter++;
+      state.newText = "";
+    }
+  }
+};
 Vue.component('todos', {
   template: `
   <div class="todo">
     <div>
-      <input></input>
-      <button>+</button>
+      <input :value="newText" @change="changeNewText($event.target.value)" />
+      <button @click="newTodo">+</button>
     </div>
     <ul>
-    <li><input type="checkbox"><span style="text-decoration: unset;">Hola Mundo</span><button>x</button></li>
+      <li v-for="(todo,index) in todos">
+        <input  type="checkbox"
+                @change="checkTodo(todo.id, $event.target.checked)"/>
+        <span v-bind:style="{textDecoration: todo.textDecoration}">
+          {{todo.text}}
+        </span>
+        <button @click="deleteTodo(todo.id)">x</button>
+      </li>
     </ul>
-  </div>`  
+  </div>`,
+  computed:{
+    ...mapState({
+      todos: state => state.todo.todos.map(t=>{
+        return {
+          ...t,
+          textDecoration: t.checked?'line-through':'unset'
+        };
+      })
+    }),
+    ...mapGetters(["newText"])
+  },
+  //methods: mapMutations(["checkTodo"])
+  // paul no sabe ... 
+  methods: {
+    checkTodo(id,checked){
+      this.$store.commit('checkTodo',{id,checked});
+    },
+    ...mapMutations(["newTodo","deleteTodo","changeNewText"])
+  }
 });
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+// Calc
 Vue.component('calc', {
   template: `
   <div>
     Calc
   </div>`  
 });
+////////////////////////////////////////////////////////////////////////////////
+
+
 Vue.component('invoice', {
   template: `
   <div>
@@ -43,9 +108,23 @@ const appStoreModule = {
   state: {
     tab: TodoTab
   },
+  getters: {
+    isTodoTab: state => state.tab === TodoTab,
+    isCalcTab: state => state.tab === CalcTab,
+    isInvoiceTab: state => state.tab === InvoiceTab
+  },
   mutations: {
-    changeTab (state,tab) {
+    showTab(state,tab){
       state.tab = tab;
+    },
+    showTodos(){
+      this.commit('showTab',TodoTab);
+    },
+    showCalc(){
+      this.commit('showTab',CalcTab);
+    },
+    showInvoice(){
+      this.commit('showTab',InvoiceTab);
     }
   }
 };
@@ -57,33 +136,13 @@ Vue.component('todoapp-vue', {
       <li><button v-on:click="showCalc">Calc</button></li>
       <li><button v-on:click="showInvoice">Invoice</button></li>
     </ul>
-    <todos v-if="isTodo"></todos>
-    <calc v-if="isCalc"></calc>
-    <invoice v-if="isInvoice"></invoice>
+    <todos v-if="isTodoTab"></todos>
+    <calc v-if="isCalcTab"></calc>
+    <invoice v-if="isInvoiceTab"></invoice>
   </div>
   `,
-  computed: {
-    isTodo: function(){
-      return this.$store.state.app.tab == TodoTab;
-    },
-    isCalc: function(){
-      return this.$store.state.app.tab == CalcTab;
-    },
-    isInvoice: function(){
-      return this.$store.state.app.tab == InvoiceTab;
-    }
-  },
-  methods: {
-    showTodos: function(){
-      this.$store.commit('changeTab', TodoTab);
-    },
-    showCalc: function(){
-      this.$store.commit('changeTab', CalcTab);
-    },
-    showInvoice: function(){
-      this.$store.commit('changeTab', InvoiceTab);
-    }
-  }
+  computed: mapGetters(["isTodoTab","isCalcTab","isInvoiceTab"]),
+  methods: mapMutations(["showTodos","showCalc","showInvoice"])
 });
 
 // setup
@@ -91,7 +150,8 @@ Vue.component('todoapp-vue', {
 const store = new Vuex.Store({
   strict: process.env.NODE_ENV !== 'production',
   modules: {
-    app: appStoreModule
+    app: appStoreModule,
+    todo: todoStoreModule
   }
 });
 new Vue({
