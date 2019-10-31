@@ -28,7 +28,7 @@ const todoStoreModule = {
       state.todos = state.todos.filter(t => t.id !== id);
     },
     changeNewText(state,text){
-      state.newText =text;
+      state.newText = text;
     },
     newTodo(state){
       state.todos = [...state.todos, {
@@ -49,7 +49,7 @@ Vue.component('todos', {
       <button @click="newTodo">+</button>
     </div>
     <ul>
-      <li v-for="(todo,index) in todos">
+      <li v-for="todo in todos">
         <input  type="checkbox"
                 @change="checkTodo(todo.id, $event.target.checked)"/>
         <span v-bind:style="{textDecoration: todo.textDecoration}">
@@ -60,8 +60,8 @@ Vue.component('todos', {
     </ul>
   </div>`,
   computed:{
-    ...mapState({
-      todos: state => state.todo.todos.map(t=>{
+    ...mapState("todo",{
+      todos: state => state.todos.map(t=>{
         return {
           ...t,
           textDecoration: t.checked?'line-through':'unset'
@@ -82,18 +82,8 @@ Vue.component('todos', {
 ////////////////////////////////////////////////////////////////////////////////
 // Calc
 
-/*
-const CalcClear = 'CalcClear';
-const CalcDot = 'CalcDot';
-const CalcEnter = 'CalcEnter';
-const CalcOper = 'CalcOper';
-const CalcNumber = 'CalcNumber';
-const numberSet = new Set(["0","1","2","3","4","5","6","7","8","9"]);
-const operSet = new Set(["+","-","*","/"]);
-*/
 const resolveOperation = (left, operation, input) => {
   let right = parseFloat(input);
-  console.warn(left, operation, input, right);
   if ( !isNaN(right) && operation === "+" && !isNaN(left) ) return left + right;
   if ( !isNaN(right) && operation === "-" && !isNaN(left) ) return left - right;
   if ( !isNaN(right) && operation === "*" && !isNaN(left) ) return left * right;
@@ -189,12 +179,109 @@ Vue.component('calc', {
 });
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+// Invoice
 
+const invoiceStoreModule = {
+  namespaced: true,
+  state: {
+    items:[],
+    counter:100,
+    tax: {
+      percent:true,
+      val:0
+    }
+  },
+  getters: {
+    summary({items, tax}) {
+      let nitems = items.map(item=>{return{
+        ...item,
+        total:(item.checked?item.quantity*item.price:0)
+      }});
+      let subtotal = nitems.reduce((sub,item)=>
+        sub + item.total
+      ,0);
+      let taxValue = (tax.percent?(subtotal*tax.val/100):subtotal+tax.val);
+      return {
+        items: nitems,
+        subtotal,
+        taxValue,
+        total: subtotal + taxValue
+      };
+    }
+  },
+  mutations: {
+    addItem(state){
+      state.items = [...state.items, {
+        id:state.counter,
+        text:"",
+        price:0,
+        quantity:0,
+        checked: true
+      }];
+      state.counter +=1;
+    },
+    deleteItem(state,id) {
+      state.items = state.items.filter(t => t.id !== id);
+    },
+    changeItemPrice(state,{id,price}){
+      state.items = state.items.map(i=>i.id===id?{...i,price}:i);
+    },
+    changeItemQuantity(state,{id,quantity}){
+      state.items = state.items.map(i=>i.id===id?{...i,quantity}:i);
+    }
+  }
+};
 Vue.component('invoice', {
   template: `
-  <div>
-    Items
-  </div>`  
+  <div class="invoice">
+    <ul>
+      <li>
+        <span>Item</span>
+        <span>Vlr U.</span>
+        <span>Cantidad</span>
+        <span>Total</span>
+      </li>
+      <li v-for="item in summary.items">
+        <span>
+          <button @click="deleteItem(item.id)">x</button>
+          <input type="checkbox" />
+        </span>
+        <input :value="item.text"></input>
+        <input :value="item.price" @change="changeItemPrice(item.id,$event.target.value)" />
+        <input :value="item.quantity"  @change="changeItemQuantity(item.id,$event.target.value)" ></input>
+        <span>{{item.total}}</span>
+      </li>
+    </ul>
+    <div>
+      <button @click="addItem">+</button>
+    </div>
+    <div>
+      <span>Sub Total</span>
+      <span>{{summary.subtotal}}</span>
+    </div>
+    <div>
+      <span>Impuesto</span>
+      <span><input ></input></span>
+      <span>{{summary.taxValue}}</span>
+    </div>
+    <div>
+      <span>Total</span>
+      <span>{{summary.total}}</span>
+    </div>
+  </div>`,
+  computed: {
+    ...mapGetters("invoice",['summary'])
+  },
+  methods: {
+    ...mapMutations("invoice",["addItem","deleteItem"]),
+    changeItemPrice(id,price){
+      this.$store.commit("invoice/changeItemPrice",{id,price:parseFloat(price)});
+    },
+    changeItemQuantity(id,quantity){
+      this.$store.commit("invoice/changeItemQuantity",{id,quantity:parseFloat(quantity)});
+    }
+  }
 });
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -205,7 +292,7 @@ const InvoiceTab = 'InvoiceTab';
 
 const appStoreModule = {
   state: {
-    tab: CalcTab
+    tab: InvoiceTab
   },
   getters: {
     isTodoTab: state => state.tab === TodoTab,
@@ -251,7 +338,8 @@ const store = new Vuex.Store({
   modules: {
     app: appStoreModule,
     todo: todoStoreModule,
-    calc: calcStoreModule
+    calc: calcStoreModule,
+    invoice: invoiceStoreModule
   }
 });
 new Vue({
