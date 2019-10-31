@@ -45,7 +45,7 @@ Vue.component('todos', {
   template: `
   <div class="todo">
     <div>
-      <input :value="newText" @change="changeNewText($event.target.value)" />
+      <input :value="newText" @keyup.stop="changeNewText($event.target.value)" />
       <button @click="newTodo">+</button>
     </div>
     <ul>
@@ -206,7 +206,8 @@ const invoiceStoreModule = {
         items: nitems,
         subtotal,
         taxValue,
-        total: subtotal + taxValue
+        total: subtotal + taxValue,
+        tax: (tax.percent)?tax.val+" %":tax.val
       };
     }
   },
@@ -229,6 +230,19 @@ const invoiceStoreModule = {
     },
     changeItemQuantity(state,{id,quantity}){
       state.items = state.items.map(i=>i.id===id?{...i,quantity}:i);
+    },
+    changeItemText(state,{id,text}){
+      state.items = state.items.map(i=>i.id===id?{...i,text}:i);
+    },
+    changeTax(state,tax){
+      let percent = tax.indexOf("%") > -1;
+      let val = parseFloat(tax.replace(/%/g,""));
+      state.tax = {
+        percent, val:isNaN(val)?0:val
+      }
+    },
+    checkItem(state,{id,checked}){
+      state.items = state.items.map(t => t.id === id? {...t, checked} : t );
     }
   }
 };
@@ -245,11 +259,16 @@ Vue.component('invoice', {
       <li v-for="item in summary.items">
         <span>
           <button @click="deleteItem(item.id)">x</button>
-          <input type="checkbox" />
+          <input  type="checkbox"
+                  :checked="item.checked"
+                  @change="checkItem(item.id, $event.target.checked)" />
         </span>
-        <input :value="item.text"></input>
-        <input :value="item.price" @change="changeItemPrice(item.id,$event.target.value)" />
-        <input :value="item.quantity"  @change="changeItemQuantity(item.id,$event.target.value)" ></input>
+        <input  :value="item.text"
+                @keyup.stop="changeItemText(item.id, $event.target.value)"/>
+        <input  :value="item.price"
+                @keyup.stop="changeItemPrice(item.id,$event.target.value)" />
+        <input  :value="item.quantity"
+                @keyup.stop="changeItemQuantity(item.id,$event.target.value)" />
         <span>{{item.total}}</span>
       </li>
     </ul>
@@ -262,7 +281,7 @@ Vue.component('invoice', {
     </div>
     <div>
       <span>Impuesto</span>
-      <span><input ></input></span>
+      <span><input :value="summary.tax" @keyup.stop="changeTax($event.target.value)"></input></span>
       <span>{{summary.taxValue}}</span>
     </div>
     <div>
@@ -274,12 +293,22 @@ Vue.component('invoice', {
     ...mapGetters("invoice",['summary'])
   },
   methods: {
-    ...mapMutations("invoice",["addItem","deleteItem"]),
-    changeItemPrice(id,price){
-      this.$store.commit("invoice/changeItemPrice",{id,price:parseFloat(price)});
+    ...mapMutations("invoice",["addItem","deleteItem","changeTax"]),
+    changeItemPrice(id,nprice){
+      let price = parseFloat(nprice);
+      if (isNaN(price)) price = "";
+      this.$store.commit("invoice/changeItemPrice",{id,price});
     },
-    changeItemQuantity(id,quantity){
-      this.$store.commit("invoice/changeItemQuantity",{id,quantity:parseFloat(quantity)});
+    changeItemQuantity(id,nquantity){
+      let quantity = parseFloat(nquantity);
+      if (isNaN(quantity)) quantity = "";
+      this.$store.commit("invoice/changeItemQuantity",{id,quantity});
+    },
+    checkItem(id,checked){
+      this.$store.commit('invoice/checkItem',{id,checked});
+    },
+    changeItemText(id,text){
+      this.$store.commit('invoice/changeItemText',{id,text});
     }
   }
 });
