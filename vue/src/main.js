@@ -125,6 +125,14 @@ const calcStoreModule = {
     input: '',
     operation: null
   },
+  getters: {
+    display(state){
+      if ( state.input === "" && state.prev != null ) {
+        return state.prev;
+      }
+      return state.input;
+    }
+  },
   mutations:{
     handleButton(state,b){
       if ( b === "C" ) {
@@ -140,9 +148,9 @@ const calcStoreModule = {
         else if ( state.input === "" && state.prev != null ) state.input = b;
         else state.input+= b;
       } else if ( b ==='=') {
+        state.prev = resolveOperation(state.prev,state.operation,state.input);
         state.input = '';
         state.operation = null;
-        state.prev = resolveOperation(state.prev,state.operation,state.input);
       } else if ( b.match(/\+|-|\*|\//) ) {
         if ( state.prev == null ) {
           state.prev = parseFloat(state.input);
@@ -162,7 +170,7 @@ Vue.component('calc', {
   <div class="calc">
     <span>
       <input readonly=true :value="operation"/>
-      <input readonly=true :value="input" />
+      <input readonly=true :value="display" />
     </span>
     <table>
       <tbody>
@@ -176,6 +184,7 @@ Vue.component('calc', {
   </div>`,
   computed: {
     ...mapState("calc",["input","operation"]),
+    ...mapGetters("calc",["display"])
   }
 });
 ////////////////////////////////////////////////////////////////////////////////
