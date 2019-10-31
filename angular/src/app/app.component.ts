@@ -69,8 +69,12 @@ const todosSelector = createSelector(todoModelSelector, (model)=>model.todos);
     </div>
     <ul>
       <li *ngFor="let todo of todos | async">
-        <input type="checkbox" [checked]="todo.checked" (change)="onCheckTodo(todo.id,$event.target.checked)">
-        <span [ngStyle]="{textDecoration: todo.checked?'line-through':'unset'}" >{{ todo.text }}</span>
+        <input  type="checkbox"
+                [checked]="todo.checked"
+                (change)="onCheckTodo(todo.id,$event.target.checked)">
+        <span   [ngStyle]="{textDecoration: todo.checked?'line-through':'unset'}">
+          {{ todo.text }}
+        </span>
         <button (click)="onDeleteTodo(todo.id)">x</button>
       </li>
     </ul>`
@@ -329,18 +333,41 @@ const invoiceModelReducer = createReducer(
       ...state,
       items: state.items.map( i=> i.id!==id? i : { ...i, text})
     }
+  }),
+  on(changeInvoiceTaxUI,(state,{tax})=>{
+    let percent = tax.indexOf("%") > -1;
+    let value = parseFloat(tax.replace(/%/g,""));
+    console.info(percent,value);
+    return {
+      ...state,
+      tax: {
+        percent,
+        value
+      }
+    };
   })
 );
 
 const invoiceModelSelector = (state:RootState) => state.invoiceModel;
-const invoiceItemSelector = createSelector(
+const invoiceSummarySelector = createSelector(
   invoiceModelSelector,
-  (state) => state.items.map( item => {
-    let total = item.checked ? item.quantity * item.price : 0;
-    return{
-    ...item,
-    total
-  };})
+  ({items, tax}) => {
+    let nitems = items.map(item=>{return{
+      ...item,
+      total:(item.checked?item.quantity*item.price:0)
+    }});
+    let subtotal = nitems.reduce((sub,item)=>
+      sub + item.total
+    ,0);
+    let taxValue = (tax.percent?(subtotal*tax.value/100):tax.value);
+    return {
+      items: nitems,
+      subtotal,
+      taxValue,
+      total: subtotal + taxValue,
+      tax: (tax.percent)?tax.value+" %":tax.value
+    };
+  }
 );
 
 @Component({
@@ -354,14 +381,19 @@ const invoiceItemSelector = createSelector(
         <span>Cantidad</span>
         <span>Total</span>
       </li>
-      <li *ngFor="let item of items | async">
+      <li *ngFor="let item of (summary | async).items">
         <span>
           <button (click)="deleteItem(item.id)">x</button>
-          <input type="checkbox" [checked]="item.checked" (change)="checkItem(item.id,$event.target.checked)">
+          <input  type="checkbox"
+                  [checked]="item.checked"
+                  (change)="checkItem(item.id,$event.target.checked)">
         </span>
-        <input value="{{item.text}}"/>
-        <input value="{{item.price}}" (ngModelChange)="changePrice(item.id,$event.target.value)"/>
-        <input value="{{item.quantity}}" (ngModelChange)="changeQuantity(item.id,$event.target.value)"/>
+        <input  value="{{item.text}}"
+                (keyup)="changeText(item.id,$event)" />
+        <input  value="{{item.price}}"
+                (keyup)="changePrice(item.id,$event)"/>
+        <input  value="{{item.quantity}}"
+                (keyup)="changeQuantity(item.id,$event)"/>
         <span>{{ item.total }}</span>
       </li>
     </ul>
@@ -370,49 +402,50 @@ const invoiceItemSelector = createSelector(
     </div>
     <div>
       <span>Sub Total</span>
-      <span>{{subtotal | async}}</span>
+      <span>{{(summary | async).subtotal}}</span>
     </div>
     <div>
       <span>Impuesto</span>
-      <span><input value="{{vtax | async}}" (change)="changeTax($event.target.value)" /></span>
-      <span>{{taxValue | async}}</span>
+      <span><input value="{{(summary | async).tax}}"
+                   (keyup)="changeTax($event)" /></span>
+      <span>{{(summary | async).taxValue}}</span>
     </div>
     <div>
       <span>Total</span>
-      <span>{{total | async}}</span>
+      <span>{{(summary | async).total}}</span>
     </div>
   </ng-container>
   `
 })
 export class InvoiceComponent {
-  subtotal: Observable<number>;
-  taxValue: Observable<number>;
-  total: Observable<number>;
-  vtax: Observable<string>;
-  items: Observable<Item[]>;
+  summary: Observable<Object>;
   constructor(private store: Store<RootState>) {
-    this.items = store.pipe(select(invoiceItemSelector));
+    this.summary = store.pipe(select(invoiceSummarySelector));
   }
   addNew(){
     this.store.dispatch(addNewItem());
   }
-  changeTax(tax:string){
-    this.store.dispatch(changeInvoiceTaxUI({tax}));
+  changeTax(event){
+    event.stopPropagation();
+    this.store.dispatch(changeInvoiceTaxUI({tax:event.target.value}));
   }
   deleteItem(id:number){
-    console.info(arguments);
     this.store.dispatch(deleteItem({id}));
   }
-  changePrice(id,price){
-    this.store.dispatch(changeItemPrice({id,price}))
+  changePrice(id,$event){
+    $event.stopPropagation();
+    this.store.dispatch(changeItemPrice({id,price:$event.target.value}))
   }
-  changeQuantity(id,quantity){
-    this.store.dispatch(changeItemQuantity({id,quantity}))
+  changeQuantity(id,$event){
+    $event.stopPropagation();
+    this.store.dispatch(changeItemQuantity({id,quantity:$event.target.value}))
   }
   checkItem(id,checked){
     this.store.dispatch(checkItem({id,checked}));
   }
-  checkText(id,text){
+  changeText(id,event){
+    event.stopPropagation();
+    let text = event.target.value;
     this.store.dispatch(changeItemText({id,text}));
   }
 }

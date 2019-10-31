@@ -201,7 +201,7 @@ const invoiceStoreModule = {
       let subtotal = nitems.reduce((sub,item)=>
         sub + item.total
       ,0);
-      let taxValue = (tax.percent?(subtotal*tax.val/100):subtotal+tax.val);
+      let taxValue = (tax.percent?(subtotal*tax.val/100):tax.val);
       return {
         items: nitems,
         subtotal,
