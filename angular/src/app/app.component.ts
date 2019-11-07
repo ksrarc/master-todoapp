@@ -381,7 +381,7 @@ const invoiceSummarySelector = createSelector(
         <span>Cantidad</span>
         <span>Total</span>
       </li>
-      <li *ngFor="let item of (summary | async).items">
+      <li *ngFor="let item of (summary | async).items; trackBy: trackById">
         <span>
           <button (click)="deleteItem(item.id)">x</button>
           <input  type="checkbox"
@@ -447,6 +447,9 @@ export class InvoiceComponent {
     event.stopPropagation();
     let text = event.target.value;
     this.store.dispatch(changeItemText({id,text}));
+  }
+  trackById(index: number, item:Item) {
+    return item.id;
   }
 }
 

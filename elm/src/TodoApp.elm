@@ -420,8 +420,8 @@ viewInvoiceModel model =
         ul [] <|
             li [] [
                 span [][ text "Item"],
-                span [][ text "Vlr U."],
-                span [][ text "Cantidad"],
+                span [][ text "U. Value"],
+                span [][ text "Quantity"],
                 span [][ text "Total"]
             ]
             :: List.map viewInvoiceItem model.items,
@@ -433,7 +433,7 @@ viewInvoiceModel model =
             span [] [ text  (String.fromFloat  subTotal ) ]
         ],
         div [] [
-            span [] [ text "Impuesto" ],
+            span [] [ text "Tax" ],
             span [] [ input [   value taxValue,
                                 Events.onInput ChangeInvoiceTaxUI ] [] ],
             span [] [ text  (String.fromFloat tax) ]
