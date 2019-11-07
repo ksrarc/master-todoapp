@@ -1,0 +1,103 @@
+body h1, body div h3 {
+  text-align: center; }
+
+ul {
+  list-style: none; }
+
+.todoapp {
+  margin: 1em;
+  border: 1px solid #EEE; }
+  .todoapp > div > ul {
+    list-style: none;
+    text-align: center;
+    padding: .5em 0em;
+    margin: 0em 0em;
+    border-bottom: 1px solid #EEE; }
+  .todoapp > div > ul > li {
+    display: inline;
+    margin-left: 1em;
+    margin-right: 1em; }
+    .todoapp > div > ul > li button {
+      min-width: 5em; }
+  .todoapp > div > div {
+    max-width: 18em;
+    margin: auto;
+    padding: 1em;
+    text-align: center; }
+  .todoapp .todo > div > input {
+    max-width: 13em; }
+  .todoapp .todo > ul {
+    padding: 1em;
+    text-align: left;
+    margin: 0; }
+  .todoapp .todo li span {
+    display: inline-block;
+    width: 11em; }
+  .todoapp .calc table {
+    margin-left: auto;
+    margin-right: auto; }
+  .todoapp .calc td {
+    margin: 0px;
+    padding: 1px; }
+  .todoapp .calc td[rowspan="2"] button {
+    height: 5em; }
+  .todoapp .calc td[colspan="2"] button {
+    width: 5em; }
+  .todoapp .calc button {
+    min-width: 2.5em;
+    min-height: 2.5em;
+    margin: 0px;
+    padding: 0px; }
+  .todoapp .calc > div > div > span {
+    min-width: 10.4em; }
+  .todoapp .calc > span > input:first-child {
+    max-width: 1em;
+    padding-left: 0px;
+    padding-right: 0px;
+    border-right: none; }
+  .todoapp .calc > span > input:last-child {
+    max-width: 9.4em;
+    border-left: none;
+    text-align: right; }
+  .todoapp .invoice {
+    min-width: 29em;
+    text-align: left; }
+    .todoapp .invoice > ul {
+      padding: 0px; }
+    .todoapp .invoice li {
+      margin-bottom: .3em; }
+    .todoapp .invoice li:first-child {
+      text-align: right; }
+      .todoapp .invoice li:first-child span:first-child {
+        max-width: 8em;
+        margin-right: .5em; }
+      .todoapp .invoice li:first-child span {
+        display: inline-block;
+        min-width: 5em;
+        margin-right: .2em; }
+    .todoapp .invoice li input:nth-child(2) {
+      max-width: 8em;
+      margin-right: .5em;
+      text-align: left; }
+    .todoapp .invoice li input {
+      max-width: 5em;
+      margin-right: .2em;
+      text-align: right; }
+    .todoapp .invoice li span:last-child {
+      display: inline-block;
+      text-align: right;
+      min-width: 5em; }
+    .todoapp .invoice > div {
+      text-align: right;
+      padding: 0px; }
+      .todoapp .invoice > div > * {
+        margin-right: .2em; }
+      .todoapp .invoice > div span:last-child {
+        display: inline-block;
+        text-align: right;
+        min-width: 5em; }
+      .todoapp .invoice > div input:nth-child(2) {
+        max-width: 5em; }
+      .todoapp .invoice > div input {
+        max-width: 5em;
+        text-align: right; }
